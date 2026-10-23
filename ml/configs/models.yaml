@@ -1,0 +1,119 @@
+# Candela base models. Read by `candela_lab` (training, evaluation, export) and by `services/worker` (serving).
+# `selected` marks the base each tier trains on; candidates stay listed so the probe stays reproducible.
+schema: 1
+tiers:
+  pro:
+    selected: gemma-4-12b
+    candidates: [gemma-4-12b, qwen3-8b]
+  lite:
+    selected: qwen3-1.7b
+    candidates: [qwen3-1.7b]
+
+models:
+  gemma-4-12b:
+    tier: pro
+    family: gemma4
+    displayName: Gemma 4 12B
+    source: google/gemma-4-12B-it-qat-q4_0-unquantized
+    license: apache-2.0
+    mlx:
+      # Converted locally from the QAT checkpoint (group size 32 matches the QAT q4_0 grid); see `lab models prepare`.
+      repo: null
+      localPath: ml/models/gemma-4-12b-it-qat-mlx-4bit
+      bits: 4
+      groupSize: 32
+      fallbackRepo: mlx-community/gemma-4-12B-it-4bit
+    gguf:
+      repo: google/gemma-4-12B-it-qat-q4_0-gguf
+      file: gemma-4-12b-it-qat-q4_0.gguf
+    contextLength: 262144
+    trainContextLength: 2048
+    architecture: {layers: 48, hiddenSize: 3840, intermediateSize: 15360, attentionHeads: 16, kvHeads: 8, headDim: 256, vocabSize: 262144, tiedEmbeddings: true}
+    chatTemplate:
+      toolCallFormat: gemma4
+      toolCallStart: "<|tool_call>"
+      toolCallEnd: "<tool_call|>"
+      toolResponse: "tool results render inside the model turn as <|tool_response>response:NAME{value:...}<tool_response|>"
+      toolArguments: mapping
+      systemRole: true
+      thinking: "enable_thinking kwarg; non-thinking generation prompt appends an empty <|channel>thought channel"
+      thinkingKwarg: enable_thinking
+      stop: ["<turn|>", "<|tool_response>"]
+    lora:
+      rank: 16
+      scale: 2.0
+      dropout: 0.05
+      numLayers: 16
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj, mlp.gate_proj, mlp.up_proj, mlp.down_proj]
+    memory: {trainBudgetGb: 9.0, inferenceBudgetGb: 8.0}
+    export: {adapter: mlx, portable: gguf-lora}
+
+  qwen3-8b:
+    tier: pro
+    family: qwen3
+    displayName: Qwen3 8B
+    source: Qwen/Qwen3-8B
+    license: apache-2.0
+    mlx:
+      repo: mlx-community/Qwen3-8B-4bit
+      bits: 4
+      groupSize: 64
+    gguf:
+      repo: Qwen/Qwen3-8B-GGUF
+      file: Qwen3-8B-Q4_K_M.gguf
+    contextLength: 40960
+    trainContextLength: 2048
+    architecture: {layers: 36, hiddenSize: 4096, intermediateSize: 12288, attentionHeads: 32, kvHeads: 8, headDim: 128, vocabSize: 151936, tiedEmbeddings: false}
+    chatTemplate:
+      toolCallFormat: hermes-json
+      toolCallStart: "<tool_call>"
+      toolCallEnd: "</tool_call>"
+      toolResponse: "tool results render as a user turn wrapping <tool_response>...</tool_response>"
+      toolArguments: mapping
+      systemRole: true
+      thinking: "enable_thinking kwarg; non-thinking mode emits an empty <think></think> block"
+      thinkingKwarg: enable_thinking
+      stop: ["<|im_end|>"]
+    lora:
+      rank: 16
+      scale: 2.0
+      dropout: 0.05
+      numLayers: 16
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj, mlp.gate_proj, mlp.up_proj, mlp.down_proj]
+    memory: {trainBudgetGb: 9.0, inferenceBudgetGb: 6.0}
+    export: {adapter: mlx, portable: gguf-lora}
+
+  qwen3-1.7b:
+    tier: lite
+    family: qwen3
+    displayName: Qwen3 1.7B
+    source: Qwen/Qwen3-1.7B
+    license: apache-2.0
+    mlx:
+      repo: mlx-community/Qwen3-1.7B-4bit
+      bits: 4
+      groupSize: 64
+    gguf:
+      repo: Qwen/Qwen3-1.7B-GGUF
+      file: Qwen3-1.7B-Q8_0.gguf
+    contextLength: 40960
+    trainContextLength: 2048
+    architecture: {layers: 28, hiddenSize: 2048, intermediateSize: 6144, attentionHeads: 16, kvHeads: 8, headDim: 128, vocabSize: 151936, tiedEmbeddings: true}
+    chatTemplate:
+      toolCallFormat: hermes-json
+      toolCallStart: "<tool_call>"
+      toolCallEnd: "</tool_call>"
+      toolResponse: "tool results render as a user turn wrapping <tool_response>...</tool_response>"
+      toolArguments: mapping
+      systemRole: true
+      thinking: "enable_thinking kwarg; non-thinking mode emits an empty <think></think> block"
+      thinkingKwarg: enable_thinking
+      stop: ["<|im_end|>"]
+    lora:
+      rank: 16
+      scale: 2.0
+      dropout: 0.05
+      numLayers: 16
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj, mlp.gate_proj, mlp.up_proj, mlp.down_proj]
+    memory: {trainBudgetGb: 4.0, inferenceBudgetGb: 2.0}
+    export: {adapter: fused, portable: gguf-q4_k_m}
