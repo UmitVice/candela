@@ -1,0 +1,97 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_symbols",
+      "description": "Find US-listed stocks or ETFs by ticker or company name. Use when the user mentions a company without a ticker or the ticker is ambiguous.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Ticker or company name fragment." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 10, "default": 5 }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_quote",
+      "description": "Latest end-of-day quote for a US ticker: close, change, range, volume and 52-week extremes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "pattern": "^[A-Z][A-Z0-9.\\-]{0,9}$", "description": "Uppercase ticker, e.g. NVDA or BRK.B." }
+        },
+        "required": ["symbol"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_price_history",
+      "description": "Daily price history summary for a ticker over a range: return, high/low, volatility, max drawdown and weekly closes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "pattern": "^[A-Z][A-Z0-9.\\-]{0,9}$" },
+          "range": { "type": "string", "enum": ["1M", "3M", "6M", "1Y", "2Y", "5Y"], "default": "1Y" }
+        },
+        "required": ["symbol"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_technical_indicators",
+      "description": "Deterministically computed technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR) with rule-based signals for a ticker.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "pattern": "^[A-Z][A-Z0-9.\\-]{0,9}$" },
+          "range": { "type": "string", "enum": ["6M", "1Y", "2Y"], "default": "1Y" }
+        },
+        "required": ["symbol"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_fundamentals",
+      "description": "Reported financial statement data from SEC filings with derived margins and growth rates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "pattern": "^[A-Z][A-Z0-9.\\-]{0,9}$" },
+          "period": { "type": "string", "enum": ["annual", "quarterly"], "default": "annual" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 8, "default": 4 }
+        },
+        "required": ["symbol"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_forecast",
+      "description": "Probabilistic price forecast bands (P10, P50, P90) for 3, 6, 9 and 12 month horizons, with the method and data source.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "pattern": "^[A-Z][A-Z0-9.\\-]{0,9}$" }
+        },
+        "required": ["symbol"],
+        "additionalProperties": false
+      }
+    }
+  }
+]
