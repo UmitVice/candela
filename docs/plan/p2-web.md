@@ -10,7 +10,7 @@ Turn the terminal into the real product: live chat through the gateway (WebSocke
 
 ## Deliverables
 
-1. Live mode against the local gateway (`make gateway-run`, port 8710, dev lite model or the worker): status polling (every 30 s and on focus) drives the model pill (`PRO · Candela <size> <version> · GPU`, `REPLAY`, `OFFLINE`), route badge, queue position UI and the status line.
+1. Live mode against the local gateway (`make gateway-run`, port 8710, dev lite model or the worker): status polling (every 30 s and on focus) drives the model pill (`PRO · Candela 12B <version> · GPU`, `BUSY` when the worker declines for memory, `REPLAY`, `OFFLINE`), queue position UI and the status line. There is no lite tier.
 2. Tool result cards (lazy, `@defer` on viewport):
    - Quote card (price, change, range bar for day and 52-week, volume vs 30-day average).
    - Price chart with Lightweight Charts: candlesticks + volume, range switcher, crosshair legend; keep TradingView attribution.
