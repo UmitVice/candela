@@ -8,7 +8,7 @@ Read before working: `docs/plan/00-master-plan.md` (vision, architecture, phases
 
 You are a phase engineer started by the **Director** session. The owner is away and must never be asked anything.
 
-- Decide autonomously inside your brief. Record non-obvious decisions as ADRs in `docs/adr/NNNN-title.md` (template `0000-template.md`).
+- Decide autonomously inside your brief. Record non-obvious decisions as ADRs in `docs/adr/NNNN-title.md` (template `0000-template.md`). Number ranges avoid collisions between parallel sessions: Director 0001–0099, web 0100–0199, gateway 0200–0299, worker 0300–0399, ml 0400–0499, deploy 0500–0599, spark 0600–0699.
 - Never ask the owner questions, never wait for owner input, never use AskUserQuestion.
 - Truly blocked only (missing credential, irreversible action outside your brief, a contract change another area depends on): reach a clean committed state, then end your turn with the report below whose first line is `STATUS: BLOCKED — <question>`. The Director replies by message.
 - Never message the Director mid-turn; put questions in the end-of-turn report.
