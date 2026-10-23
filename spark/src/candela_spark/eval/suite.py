@@ -11,7 +11,7 @@ from candela_spark import log, paths
 from candela_spark.data import config as data_config
 from candela_spark.data.loader import validation_windows
 from candela_spark.eval import data as eval_data
-from candela_spark.eval.prompts import FINANCE_CLOZE, SAMPLE_PROMPTS
+from candela_spark.eval.prompts import FINANCE_CLOZE, FINANCE_CLOZE_HARD, SAMPLE_PROMPTS
 from candela_spark.eval.scoring import Scorer
 from candela_spark.model.generate import generate, load_from_checkpoint
 from candela_spark.model.transformer import SparkLM
@@ -27,6 +27,7 @@ CHANCE = {
     "piqa": 0.5,
     "blimp": 0.5,
     "finance-cloze": 0.25,
+    "finance-cloze-hard": 0.25,
     "lambada": 0.0,
 }
 
@@ -103,6 +104,17 @@ def zero_shot(model: SparkLM, n: int) -> list[dict[str, Any]]:
         ok += sc.choice(ctx, [right, *wrong], normalize=False) == 0
     out.append(
         {"id": "finance-cloze", "metric": "acc", "n": len(FINANCE_CLOZE), "value": ok / len(FINANCE_CLOZE)}
+    )
+    ok = 0
+    for ctx, right, wrong in FINANCE_CLOZE_HARD:
+        ok += sc.choice(ctx, [right, *wrong], normalize=False) == 0
+    out.append(
+        {
+            "id": "finance-cloze-hard",
+            "metric": "acc",
+            "n": len(FINANCE_CLOZE_HARD),
+            "value": ok / len(FINANCE_CLOZE_HARD),
+        }
     )
     for s in out:
         s["chance"] = CHANCE[s["id"]]

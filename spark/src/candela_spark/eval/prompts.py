@@ -107,3 +107,71 @@ ATTENTION_SENTENCES = [
     "Net income rose 12 percent while operating expenses declined.",
     "A recession lowers demand, profits and employment across the economy.",
 ]
+
+# Same scoring, but every distractor is a plausible finance word, so only domain knowledge separates them.
+FINANCE_CLOZE_HARD: list[tuple[str, str, list[str]]] = [
+    (
+        "When a central bank raises interest rates, borrowing becomes more",
+        " expensive",
+        [" cheaper", " common", " liquid"],
+    ),
+    ("Bond prices usually fall when interest rates", " rise", [" fall", " stabilize", " converge"]),
+    (
+        "A company's assets minus its liabilities equals shareholders'",
+        " equity",
+        [" revenue", " debt", " dividends"],
+    ),
+    ("Revenue minus the cost of goods sold is gross", " profit", [" debt", " capital", " liabilities"]),
+    (
+        "The annual report that U.S. public companies file with the SEC is Form",
+        " 10-K",
+        [" 8-K", " S-1", " 13F"],
+    ),
+    (
+        "A sustained decline in the general price level is called",
+        " deflation",
+        [" inflation", " stagflation", " recession"],
+    ),
+    ("If a currency depreciates, the country's exports become", " cheaper", [" pricier", " rarer", " taxed"]),
+    (
+        "Dividing a stock's price by its earnings per share gives the price-to-earnings",
+        " ratio",
+        [" margin", " yield", " spread"],
+    ),
+    ("A loan secured by real estate is called a", " mortgage", [" bond", " dividend", " warrant"]),
+    (
+        "Selling borrowed shares in the hope of buying them back cheaper is called short",
+        " selling",
+        [" buying", " hedging", " lending"],
+    ),
+    (
+        "Money a company owes to its suppliers is recorded as accounts",
+        " payable",
+        [" receivable", " equity", " revenue"],
+    ),
+    (
+        "Money customers owe to a company is recorded as accounts",
+        " receivable",
+        [" payable", " equity", " expense"],
+    ),
+    (
+        "Spreading investments across many assets to reduce risk is called",
+        " diversification",
+        [" leverage", " inflation", " arbitrage"],
+    ),
+    (
+        "Using borrowed money to increase the potential return of an investment is called",
+        " leverage",
+        [" diversification", " liquidity", " amortization"],
+    ),
+    (
+        "Gradually writing off the cost of a tangible asset over its useful life is called",
+        " depreciation",
+        [" appreciation", " inflation", " dilution"],
+    ),
+    (
+        "Issuing new shares reduces existing shareholders' ownership percentage, an effect called",
+        " dilution",
+        [" leverage", " depreciation", " deflation"],
+    ),
+]
