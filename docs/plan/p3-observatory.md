@@ -2,7 +2,7 @@
 
 - Area you own: `apps/web/**` (read-only for `apps/web/public/observatory/`), `make/web.mk`, `docs/status/p3-observatory.md`, new ADRs.
 - Runs in parallel with `p3-deploy` (which owns `deploy/**` and gateway deployment tooling).
-- Inputs: `CLAUDE.md`, `contracts/observatory.md`, `contracts/api.md` (`TelemetryFrame`, `ModelInfo.architecture`), status reports of earlier phases, artifacts in `apps/web/public/observatory/`.
+- Inputs: `CLAUDE.md`, `contracts/observatory.md`, `contracts/api.md` (`TelemetryFrame`, `ModelInfo.architecture`), status reports of earlier phases (including `docs/status/p1-spark.md` for the Spark artifact schemas), artifacts in `apps/web/public/observatory/`.
 
 ## Goal
 
@@ -14,6 +14,7 @@ A professional, cinematic but data-honest 3D view of the model that the owner ca
 2. **Fine-tune Field**. 3D bars (x = module, z = layer, y = log-scaled ‖scale·B·A‖_F) from `lora-deltas.json`, amber-to-flame colour ramp, a checkpoint timeline that animates how adaptation grows during training, version switcher, hover tooltips with exact values.
 3. **Embedding Galaxy**. Points from `galaxy.json` coloured by sector, sized by market cap, orbit controls, hover labels, click to focus a symbol in the terminal context and offer `/analyze`.
 4. **Lab HUD**. 2D ECharts overlays: train/validation loss, learning rate, tokens/s and peak memory with resource-guard pause markers; base vs tuned evaluation bars per suite; model card summary.
+5. **Spark Lab** (Candela Spark, the from-scratch family): a family tree of sizes (35M today, later 125M → 2B) with status; live training progress (tokens seen, loss, int4-vs-bf16 validation gap that shows QAT working, throughput, pauses) from `GET /api/v1/lab/spark` when the gateway is live, otherwise from the static `observatory/spark/` artifacts; scaling-law chart (validation loss vs compute across sizes); an attention explorer that renders real per-layer, per-head attention maps for curated finance sentences as a 3D stack of heatmaps with a 2D drill-down.
 
 ## Experience
 
@@ -33,7 +34,7 @@ A professional, cinematic but data-honest 3D view of the model that the owner ca
 ## Acceptance (verify by running; no automated tests)
 
 - `make web-check` passes; Terminal route bundle unchanged within 5 %.
-- All four scenes render real artifacts; the tower animates with live telemetry from the local gateway and worker; 60 fps on the owner's Mac, ≥ 30 fps on a mid-range phone preview.
+- All five scenes render real artifacts; the tower animates with live telemetry from the local gateway and worker; 60 fps on the owner's Mac, ≥ 30 fps on a mid-range phone preview.
 - One production deploy at the end.
 - Report with screenshots in `docs/media/` written to `docs/status/p3-observatory.md`.
 
