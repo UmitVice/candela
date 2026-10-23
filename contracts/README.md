@@ -10,3 +10,4 @@ Shared, versioned interfaces between the components. Code follows these files; c
 | `tools.md` | gateway | `ml/` (training data must match model views), `apps/web` (UI views) |
 | `system-prompt.md` | gateway | `ml/` (training data) |
 | `observatory.md` | `ml/` | `apps/web` |
+| `gpu-lease.md` | every GPU job | `services/worker`, `ml/`, `spark/` |

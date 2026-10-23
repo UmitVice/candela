@@ -43,7 +43,8 @@ Several phase sessions may work in this checkout at the same time, each in its o
 | `apps/web` | Angular PWA: Terminal (default) and Observatory (3D design view) | web |
 | `services/gateway` | Go API gateway: chat streaming, tool loop, market data, worker hub | gateway |
 | `services/worker` | Python MLX inference worker (dials out to the gateway) | worker |
-| `ml` | Candela Lab: data, training, evaluation, export, publishing; `ml/nano` holds Candela-Nano (from-scratch model) | ml |
+| `ml` | Candela Lab: Candela Pro (Gemma 4 12B QAT + QLoRA) data, training, evaluation, export, publishing | ml |
+| `spark` | Candela Spark: from-scratch, QAT-native model family (tokenizer, architecture, pretraining daemon, scaling) | spark |
 | `deploy` | Live setup on the Mac (supervisor, tunnel, endpoint discovery), Netlify rendering, recordings | deploy |
 | `contracts` | Shared API, protocol, tool and artifact contracts | Director |
 | `docs` | Plans, ADRs, status reports | all (own files) |
@@ -89,7 +90,7 @@ Do not use, stop or reconfigure anything you did not start, especially the owner
 ## Resource budget
 
 - The owner keeps working on other projects on this machine (often a 9 GB `llama-server`). Never kill, restart or reconfigure processes you did not start.
-- Candela ML memory budget: training peak ≤ 9 GB; inference ≤ 8 GB for the pro model and ≤ 2 GB for lite, loaded only on demand. Use the resource guard in `ml/` (waits for headroom, checkpoints and pauses under memory pressure).
+- Candela memory budget: Pro training peak ≤ 9 GB; Pro inference ≤ 8 GB, loaded only on demand; Spark trainer ≤ 4 GB. Every GPU job uses a memory resource guard (waits for headroom, checkpoints and pauses under pressure) and the GPU lease protocol in `contracts/gpu-lease.md` (live inference > Pro training > evaluation > Spark).
 - Long jobs (training, evaluation, bulk downloads): `caffeinate -i nice -n 10 <cmd>`, run in the background, log under `ml/runs/<run-id>/`. You are notified when a background command exits: never busy-poll or sleep-loop in the foreground.
 - Keep builds modest (`GOMAXPROCS=4`, no parallel heavy builds). Stop every server or watcher you started before ending your turn unless your brief says to keep it running.
 - Models and datasets download to the shared Hugging Face cache (`~/.cache/huggingface`) or `ml/data/` (git-ignored), never into tracked paths.

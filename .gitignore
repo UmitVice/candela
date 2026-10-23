@@ -73,6 +73,10 @@ __pycache__/
 /ml/models/
 /ml/hf_cache/
 /services/worker/models/
+/spark/data/
+/spark/runs/
+/spark/checkpoints/
+/spark/artifacts/
 mlruns/
 wandb/
 *.safetensors
