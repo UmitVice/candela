@@ -39,13 +39,13 @@ type Snapshot struct {
 	hasFund bool
 }
 
-func EnsureSnapshot(ctx context.Context, path, rawURL string, log *slog.Logger) error {
+func EnsureSnapshot(ctx context.Context, client *http.Client, path, rawURL string, log *slog.Logger) error {
 	if _, err := os.Stat(path); err == nil || rawURL == "" {
 		return nil
 	}
 	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		return fmt.Errorf("CANDELA_SNAPSHOT_URL must be an http(s) URL")
+	if err != nil || u.Scheme != "https" {
+		return fmt.Errorf("CANDELA_SNAPSHOT_URL must be an https URL")
 	}
 	log.Info("downloading market snapshot", "host", u.Host)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
@@ -54,7 +54,7 @@ func EnsureSnapshot(ctx context.Context, path, rawURL string, log *slog.Logger) 
 	if err != nil {
 		return err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

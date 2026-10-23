@@ -10,12 +10,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/UmitVice/candela/services/gateway/internal/chat"
 	"github.com/UmitVice/candela/services/gateway/internal/config"
+	"github.com/UmitVice/candela/services/gateway/internal/egress"
 	"github.com/UmitVice/candela/services/gateway/internal/httpapi"
 	"github.com/UmitVice/candela/services/gateway/internal/llm"
 	"github.com/UmitVice/candela/services/gateway/internal/llm/openai"
@@ -40,7 +42,7 @@ func main() {
 
 func defaultFallbackModel(id string) llm.ModelInfo {
 	return llm.ModelInfo{
-		ID: id, DisplayName: "Qwen3 1.7B (base)", Tier: "lite", Version: "base", BaseModel: "Qwen/Qwen3-1.7B",
+		ID: id, DisplayName: "Qwen3 1.7B base (dev fallback)", Tier: "lite", Version: "base", BaseModel: "Qwen/Qwen3-1.7B",
 		Runtime: "llama.cpp", Host: "cloud-cpu", Quantization: "Q4_K_M", ContextLength: 32768,
 		SupportsReasoning: true, SupportsTools: true, SupportsTelemetry: false,
 		Architecture: &llm.ModelArchitecture{Layers: 28, HiddenSize: 2048, AttentionHeads: 16, KVHeads: 8, VocabSize: 151936, Parameters: "1.7B"},
@@ -56,7 +58,11 @@ func run() error {
 	slog.SetDefault(log)
 	log.Info("starting gateway", "version", version, "commit", commit, "config", cfg)
 
+	if n := cfg.MemoryLimitBytes(); n > 0 && os.Getenv("GOMEMLIMIT") == "" {
+		debug.SetMemoryLimit(n)
+	}
 	metrics := observability.NewMetrics()
+	egressClient := egress.NewClient(cfg.EgressAllow, 10*time.Minute)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -66,7 +72,7 @@ func run() error {
 	}
 	defer st.Close()
 
-	if err := market.EnsureSnapshot(ctx, cfg.SnapshotPath, cfg.SnapshotURL, log); err != nil {
+	if err := market.EnsureSnapshot(ctx, egressClient, cfg.SnapshotPath, cfg.SnapshotURL, log); err != nil {
 		log.Error("snapshot download failed", "err", err)
 	}
 	snap, err := market.OpenSnapshot(ctx, cfg.SnapshotPath)
@@ -78,7 +84,7 @@ func run() error {
 		log.Info("market snapshot loaded", "asOf", m.AsOf, "source", m.Source, "symbols", len(snap.Symbols()), "fundamentals", snap.HasFundamentals())
 		defer snap.Close()
 	}
-	dir := market.NewDirectory(st, snap, cfg.SymbolsBaseURL, log)
+	dir := market.NewDirectory(st, snap, cfg.SymbolsBaseURL, egress.NewClient(cfg.EgressAllow, 60*time.Second), log)
 	if err := dir.Load(ctx); err != nil {
 		return err
 	}
@@ -98,7 +104,11 @@ func run() error {
 	fbClient := openai.New(cfg.FallbackURL, cfg.FallbackAPIKey, cfg.FallbackModel, cfg.FallbackTimeout)
 	var fbHealthy atomic.Bool
 	hub := workerhub.New(cfg.WorkerToken, log, metrics)
-	fallback := &chat.Fallback{Model: fbModel, Upstream: fbClient, Concurrency: cfg.FallbackConcurrency, Healthy: fbHealthy.Load}
+	fbConcurrency := cfg.FallbackConcurrency
+	if !cfg.FallbackOn() {
+		fbConcurrency = 0
+	}
+	fallback := &chat.Fallback{Model: fbModel, Upstream: fbClient, Concurrency: fbConcurrency, Healthy: fbHealthy.Load}
 	sched := chat.NewScheduler(hub, fallback, cfg.MaxConcurrentGenerations, cfg.QueueMaxDepth, metrics)
 
 	var rec *chat.Recorder
@@ -107,11 +117,12 @@ func run() error {
 			return err
 		}
 	}
-	orch := chat.NewOrchestrator(sched, registry, metrics, log, cfg.ToolTimeout, rec)
+	orch := chat.NewOrchestrator(sched, registry, metrics, log, chat.Limits{MaxInputChars: cfg.MaxInputChars,
+		MaxContextChars: cfg.MaxContextChars, MaxOutputTokens: cfg.MaxOutputTokens, ToolTimeout: cfg.ToolTimeout}, rec)
 
 	bg, cancelBG := context.WithCancel(context.Background())
 	defer cancelBG()
-	go probeFallback(bg, fbClient, &fbHealthy, cfg.FallbackConcurrency > 0, sched.Refresh, log)
+	go probeFallback(bg, fbClient, &fbHealthy, fbConcurrency > 0, sched.Refresh, log)
 	if !cfg.DisableSymbolFetch {
 		go dir.RefreshLoop(bg, cfg.SymbolsRefresh)
 	}

@@ -28,7 +28,23 @@ type Emitter interface {
 	Emit(event string, data any) error
 }
 
+type Limits struct {
+	MaxInputChars   int
+	MaxContextChars int
+	MaxOutputTokens int
+	ToolTimeout     time.Duration
+}
+
+var publicMessages = map[string]string{
+	"upstream_unavailable": "the model is unavailable right now",
+	"upstream_timeout":     "the model did not answer in time",
+	"overloaded":           "all generation slots and the queue are full",
+	"invalid_request":      "the request was rejected",
+	"internal":             "internal error",
+}
+
 type Orchestrator struct {
+	limits      Limits
 	sched       *Scheduler
 	tools       *tools.Registry
 	metrics     *observability.Metrics
@@ -40,8 +56,40 @@ type Orchestrator struct {
 	active sync.WaitGroup
 }
 
-func NewOrchestrator(s *Scheduler, t *tools.Registry, m *observability.Metrics, log *slog.Logger, toolTimeout time.Duration, rec *Recorder) *Orchestrator {
-	return &Orchestrator{sched: s, tools: t, metrics: m, log: log, toolTimeout: toolTimeout, recorder: rec, now: time.Now}
+func NewOrchestrator(s *Scheduler, t *tools.Registry, m *observability.Metrics, log *slog.Logger, limits Limits, rec *Recorder) *Orchestrator {
+	return &Orchestrator{sched: s, tools: t, metrics: m, log: log, limits: limits, toolTimeout: limits.ToolTimeout, recorder: rec, now: time.Now}
+}
+
+func msgChars(msgs []llm.Message) int {
+	n := 0
+	for _, m := range msgs {
+		n += len(m.Content) + 16
+		for _, c := range m.ToolCalls {
+			n += len(c.Name) + len(c.Arguments) + 16
+		}
+	}
+	return n
+}
+
+// boundHistory keeps the newest turns that fit the input budget so prompt size is
+// bounded before any generation starts; the latest user message is always kept.
+func (o *Orchestrator) boundHistory(msgs []ClientMessage) ([]ClientMessage, bool) {
+	total := 0
+	start := len(msgs)
+	for i := len(msgs) - 1; i >= 0; i-- {
+		total += len(msgs[i].Content) + 16
+		if total > o.limits.MaxInputChars {
+			break
+		}
+		start = i
+	}
+	if start == len(msgs) {
+		return nil, false
+	}
+	for start < len(msgs)-1 && msgs[start].Role != "user" {
+		start++
+	}
+	return msgs[start:], true
 }
 
 func (o *Orchestrator) Scheduler() *Scheduler { return o.sched }
@@ -172,17 +220,32 @@ func (st *runState) execute(ctx context.Context, modelID, messageID, requestID s
 	}
 	defer func() { lease.Release() }()
 
-	messages := make([]llm.Message, 0, len(st.req.Messages)+8)
+	history, ok := o.boundHistory(st.req.Messages)
+	if !ok {
+		return st.fail("invalid_request", "the latest message exceeds the input limit", 0)
+	}
+	messages := make([]llm.Message, 0, len(history)+8)
 	messages = append(messages, llm.Message{Role: "system", Content: SystemPrompt(o.now())})
-	for _, m := range st.req.Messages {
+	for _, m := range history {
 		messages = append(messages, llm.Message{Role: m.Role, Content: m.Content})
 	}
-	params := llm.Params{Temperature: st.opts.temperature, TopP: defaultTopP, MaxTokens: st.opts.maxTokens,
+	budget := min(st.opts.maxTokens, o.limits.MaxOutputTokens)
+	params := llm.Params{Temperature: st.opts.temperature, TopP: defaultTopP, MaxTokens: budget,
 		Reasoning: st.opts.reasoning, Telemetry: st.opts.telemetry && lease.Model.SupportsTelemetry}
 	retried := false
 	finish := "stop"
 
 	for {
+		remaining := budget - st.usage.CompletionTokens
+		if remaining < 16 {
+			finish = "length"
+			break
+		}
+		if msgChars(messages) > o.limits.MaxContextChars {
+			finish = "tool_limit"
+			break
+		}
+		params.MaxTokens = remaining
 		genStart := time.Now()
 		res, answer, err := st.generate(ctx, lease, messages, params)
 		st.genTime += time.Since(genStart)
@@ -201,12 +264,14 @@ func (st *runState) execute(ctx context.Context, modelID, messageID, requestID s
 					continue
 				}
 			}
-			code, msg := "upstream_unavailable", "the model upstream failed"
-			if le != nil {
-				code, msg = le.Code, le.Message
-				if !knownCode(code) {
-					code = "upstream_unavailable"
-				}
+			code := "upstream_unavailable"
+			if le != nil && knownCode(le.Code) {
+				code = le.Code
+			}
+			st.log.Warn("generation failed", "route", lease.Route, "code", code, "err", err)
+			msg, ok := publicMessages[code]
+			if !ok {
+				msg = publicMessages["upstream_unavailable"]
 			}
 			return st.fail(code, msg, 0)
 		}

@@ -1,15 +1,15 @@
-SPY
-QQQ
-DIA
-IWM
-XLB
-XLC
-XLE
-XLF
-XLI
-XLK
-XLP
-XLRE
-XLU
-XLV
-XLY
+SPY|SPDR S&P 500 ETF Trust|NYSE Arca
+QQQ|Invesco QQQ Trust|NASDAQ
+DIA|SPDR Dow Jones Industrial Average ETF Trust|NYSE Arca
+IWM|iShares Russell 2000 ETF|NYSE Arca
+XLB|Materials Select Sector SPDR Fund|NYSE Arca
+XLC|Communication Services Select Sector SPDR Fund|NYSE Arca
+XLE|Energy Select Sector SPDR Fund|NYSE Arca
+XLF|Financial Select Sector SPDR Fund|NYSE Arca
+XLI|Industrial Select Sector SPDR Fund|NYSE Arca
+XLK|Technology Select Sector SPDR Fund|NYSE Arca
+XLP|Consumer Staples Select Sector SPDR Fund|NYSE Arca
+XLRE|Real Estate Select Sector SPDR Fund|NYSE Arca
+XLU|Utilities Select Sector SPDR Fund|NYSE Arca
+XLV|Health Care Select Sector SPDR Fund|NYSE Arca
+XLY|Consumer Discretionary Select Sector SPDR Fund|NYSE Arca

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,6 +63,14 @@ type Config struct {
 	RecordSessions     bool          `env:"CANDELA_RECORD_SESSIONS" envDefault:"false"`
 	RecordingsDir      string        `env:"CANDELA_RECORDINGS_DIR" envDefault:"services/gateway/data/recordings"`
 	DisableSymbolFetch bool          `env:"CANDELA_DISABLE_SYMBOL_FETCH" envDefault:"false"`
+	EgressAllow        []string      `env:"CANDELA_EGRESS_ALLOW" envSeparator:"," envDefault:"www.nasdaqtrader.com,huggingface.co,*.huggingface.co,*.hf.co"`
+
+	FallbackEnabled  string `env:"CANDELA_FALLBACK_ENABLED"`
+	MaxInputChars    int    `env:"CANDELA_MAX_INPUT_CHARS" envDefault:"24000"`
+	MaxContextChars  int    `env:"CANDELA_MAX_CONTEXT_CHARS" envDefault:"64000"`
+	MaxOutputTokens  int    `env:"CANDELA_MAX_OUTPUT_TOKENS" envDefault:"2048"`
+	MemoryLimit      string `env:"CANDELA_MEMORY_LIMIT" envDefault:"512MiB"`
+	memoryLimitBytes int64
 
 	proxyPrefixes []netip.Prefix
 }
@@ -118,6 +127,19 @@ func (c *Config) validate() error {
 	if c.FallbackConcurrency < 0 || c.QueueMaxDepth < 0 || c.MaxConcurrentGenerations < 0 {
 		errs = append(errs, errors.New("concurrency and queue limits must not be negative"))
 	}
+	if c.MaxInputChars < 1000 || c.MaxContextChars < c.MaxInputChars || c.MaxOutputTokens < 64 {
+		errs = append(errs, errors.New("token caps: CANDELA_MAX_INPUT_CHARS >= 1000, CANDELA_MAX_CONTEXT_CHARS >= CANDELA_MAX_INPUT_CHARS, CANDELA_MAX_OUTPUT_TOKENS >= 64"))
+	}
+	if n, err := parseBytes(c.MemoryLimit); err != nil {
+		errs = append(errs, fmt.Errorf("CANDELA_MEMORY_LIMIT: %w", err))
+	} else {
+		c.memoryLimitBytes = n
+	}
+	switch strings.ToLower(c.FallbackEnabled) {
+	case "", "true", "false":
+	default:
+		errs = append(errs, errors.New("CANDELA_FALLBACK_ENABLED must be true, false or empty"))
+	}
 	if c.ChatRatePerMin <= 0 || c.MarketRatePerMin <= 0 || c.FeedbackRatePerMin <= 0 {
 		errs = append(errs, errors.New("rate limits must be positive"))
 	}
@@ -125,6 +147,46 @@ func (c *Config) validate() error {
 }
 
 func (c *Config) ProxyPrefixes() []netip.Prefix { return c.proxyPrefixes }
+
+// MemoryLimitBytes is the soft Go heap limit; 0 means unlimited. An explicit GOMEMLIMIT
+// in the environment takes precedence because the runtime already applied it.
+func (c *Config) MemoryLimitBytes() int64 { return c.memoryLimitBytes }
+
+// FallbackOn reports whether the OpenAI-compatible fallback is used. It is a development
+// and future-cloud adapter, so it is off in production unless enabled explicitly.
+func (c *Config) FallbackOn() bool {
+	switch strings.ToLower(c.FallbackEnabled) {
+	case "true":
+		return c.FallbackURL != ""
+	case "false":
+		return false
+	}
+	return !c.Production() && c.FallbackURL != ""
+}
+
+func parseBytes(s string) (int64, error) {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0" || strings.EqualFold(s, "off") {
+		return 0, nil
+	}
+	units := []struct {
+		suffix string
+		mult   int64
+	}{{"GiB", 1 << 30}, {"MiB", 1 << 20}, {"KiB", 1 << 10}, {"B", 1}}
+	for _, u := range units {
+		if num, ok := strings.CutSuffix(s, u.suffix); ok {
+			n, err := strconv.ParseInt(strings.TrimSpace(num), 10, 64)
+			if err != nil || n < 0 {
+				return 0, fmt.Errorf("invalid size %q", s)
+			}
+			if n*u.mult != 0 && n*u.mult < 64<<20 {
+				return 0, fmt.Errorf("size %q is below 64MiB", s)
+			}
+			return n * u.mult, nil
+		}
+	}
+	return 0, fmt.Errorf("invalid size %q (use e.g. 512MiB or 1GiB)", s)
+}
 
 func (c *Config) Production() bool { return c.Environment == "production" }
 
@@ -144,6 +206,8 @@ func (c *Config) LogValue() slog.Value {
 		slog.Bool("metricsToken", set(c.MetricsToken)),
 		slog.String("fallbackURL", redactURL(c.FallbackURL)),
 		slog.String("fallbackModelId", c.FallbackModelID),
+		slog.Bool("fallback", c.FallbackOn()),
+		slog.String("memoryLimit", c.MemoryLimit),
 		slog.Bool("secUserAgent", set(c.SECUserAgent)),
 		slog.Bool("liveApiKey", set(c.LiveAPIKey)),
 		slog.Bool("vaniras", set(c.VanirasURL)),

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -128,16 +130,29 @@ func withRecover(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-var ipSalt = func() []byte {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return b
-}()
+type ipSalt struct {
+	mu   sync.Mutex
+	day  string
+	salt []byte
+}
 
-// hashIP keeps access logs useful for spotting abuse without storing visitor addresses.
+var salts ipSalt
+
+// hashIP keeps access logs useful for spotting abuse within a day without storing
+// visitor addresses: the random salt lives only in memory and is replaced every UTC day,
+// so hashes cannot be joined across days or recomputed after a restart.
 func hashIP(ip string) string {
-	h := sha256.Sum256(append(append([]byte{}, ipSalt...), ip...))
-	return hex.EncodeToString(h[:6])
+	day := time.Now().UTC().Format("2006-01-02")
+	salts.mu.Lock()
+	if salts.day != day {
+		salts.salt = make([]byte, 32)
+		_, _ = rand.Read(salts.salt)
+		salts.day = day
+	}
+	mac := hmac.New(sha256.New, salts.salt)
+	salts.mu.Unlock()
+	mac.Write([]byte(ip))
+	return hex.EncodeToString(mac.Sum(nil)[:8])
 }
 
 func withAccessLog(listener string, log *slog.Logger, m *observability.Metrics) func(http.Handler) http.Handler {

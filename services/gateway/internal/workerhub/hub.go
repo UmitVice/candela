@@ -203,6 +203,9 @@ func validateHello(hi *hello) error {
 	if hi.WorkerID == "" || len(hi.WorkerID) > 64 {
 		return errors.New("workerId must have 1..64 characters")
 	}
+	if len(hi.Device) > 64 {
+		hi.Device = hi.Device[:64]
+	}
 	if hi.MaxConcurrency < 1 || hi.MaxConcurrency > 8 {
 		return errors.New("maxConcurrency must be 1..8")
 	}
@@ -279,7 +282,9 @@ func (w *Worker) Status() WorkerStatus {
 	if model == "" && len(w.Models) > 0 {
 		model = w.Models[0].ID
 	}
-	return WorkerStatus{ID: w.WorkerID, ModelID: model, State: state, ConnectedAt: w.ConnectedAt.Format(time.RFC3339), Device: w.Device}
+	// Worker ids are often hostnames, so /status shows an opaque session-derived id instead.
+	return WorkerStatus{ID: "w-" + strings.TrimPrefix(w.SessionID, "ws_")[:8], ModelID: model, State: state,
+		ConnectedAt: w.ConnectedAt.Format(time.RFC3339), Device: w.Device}
 }
 
 func (w *Worker) Healthy() bool {

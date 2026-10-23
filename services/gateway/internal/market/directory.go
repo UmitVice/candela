@@ -40,9 +40,8 @@ type Directory struct {
 	loaded  time.Time
 }
 
-func NewDirectory(st *store.Store, snap *Snapshot, baseURL string, log *slog.Logger) *Directory {
-	return &Directory{store: st, snap: snap, baseURL: strings.TrimRight(baseURL, "/"), log: log,
-		client: &http.Client{Timeout: 30 * time.Second}, bySym: map[string]int{}}
+func NewDirectory(st *store.Store, snap *Snapshot, baseURL string, client *http.Client, log *slog.Logger) *Directory {
+	return &Directory{store: st, snap: snap, baseURL: strings.TrimRight(baseURL, "/"), log: log, client: client, bySym: map[string]int{}}
 }
 
 func (d *Directory) Load(ctx context.Context) error {
@@ -246,10 +245,10 @@ func (d *Directory) fetch(ctx context.Context, file string) ([]db.InsertSymbolPa
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
-	return parseDirectory(io.LimitReader(resp.Body, 16<<20), file == "otherlisted.txt")
+	return ParseDirectory(io.LimitReader(resp.Body, 16<<20), file == "otherlisted.txt")
 }
 
-func parseDirectory(r io.Reader, other bool) ([]db.InsertSymbolParams, error) {
+func ParseDirectory(r io.Reader, other bool) ([]db.InsertSymbolParams, error) {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64<<10), 1<<20)
 	var header []string
