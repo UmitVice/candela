@@ -421,35 +421,38 @@ def run(
         with gpu_lease.Lease(holder, purpose=f"{'probe' if probe else 'train'} {run_id}") as lease:
             resume = latest_checkpoint(rd) if state.step > 0 else None
             while True:
+                paused: tuple[int, str] | None = None
                 try:
                     state = session(cfg, run_id, state, guard, lease, probe, resume)
                     break
                 except Paused as p:
-                    event = {"step": p.step, "reason": p.reason, "at": now()}
-                    _log.warning("paused", run_id=run_id, step=p.step, reason=p.reason)
-                    state.status = "paused"
-                    _append_metric(rd, {"type": "pause", **event})
-                    gc.collect()
-                    resources.release_mlx_memory()
-                    hold = simulate_recover_sec if p.reason == "simulated pause" else None
-                    waited = guard.wait_for_recovery(recover_sec=hold)
-                    event["resumedAt"] = now()
-                    event["waitedSec"] = round(waited, 1)
-                    state.pauses.append(event)
-                    _append_metric(
-                        rd,
-                        {
-                            "type": "resume",
-                            "step": p.step,
-                            "at": event["resumedAt"],
-                            "waitedSec": event["waitedSec"],
-                        },
-                    )
-                    state.status = "running"
-                    _write_json(state_path, state.__dict__)
-                    resume = latest_checkpoint(rd)
-                    if probe:
-                        resume = None
+                    paused = (p.step, p.reason)
+                # Waiting outside the except block lets the traceback (and the session's model) be freed first.
+                step, reason = paused
+                event: dict[str, Any] = {"step": step, "reason": reason, "at": now()}
+                _log.warning("paused", run_id=run_id, step=step, reason=reason)
+                state.status = "paused"
+                _append_metric(rd, {"type": "pause", **event})
+                gc.collect()
+                resources.release_mlx_memory()
+                _log.info("memory released", active_gb=round(mx.get_active_memory() / 1e9, 2))
+                hold = simulate_recover_sec if reason == "simulated pause" else None
+                waited = guard.wait_for_recovery(recover_sec=hold)
+                event["resumedAt"] = now()
+                event["waitedSec"] = round(waited, 1)
+                state.pauses.append(event)
+                _append_metric(
+                    rd,
+                    {
+                        "type": "resume",
+                        "step": step,
+                        "at": event["resumedAt"],
+                        "waitedSec": event["waitedSec"],
+                    },
+                )
+                state.status = "running"
+                _write_json(state_path, state.__dict__)
+                resume = None if probe else latest_checkpoint(rd)
     except Exception:
         state.status = "failed"
         _write_json(state_path, state.__dict__)

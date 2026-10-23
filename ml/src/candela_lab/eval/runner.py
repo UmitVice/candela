@@ -12,7 +12,7 @@ import mlx.core as mx
 from candela_lab import config, gpu_lease, log, resources
 from candela_lab.data.common import read_jsonl
 from candela_lab.eval import datasets, metrics, report
-from candela_lab.paths import PROCESSED_DIR, REPORTS_DIR
+from candela_lab.paths import PROCESSED_DIR, REPORTS_DIR, RUNS_DIR
 from candela_lab.traces.grounding import grounding_report
 from candela_lab.traces.schema import validate_arguments
 
@@ -83,7 +83,7 @@ class Engine:
             if not decision.ok:
                 _log.warning("memory pressure during eval, waiting", reason=decision.reason)
                 resources.release_mlx_memory()
-                self.guard.wait_for_recovery(recover_sec=60)
+                self.guard.wait_for_recovery(recover_sec=60, holding_model=True)
             res = batch_generate(
                 self.model,
                 self.tokenizer,
@@ -276,13 +276,21 @@ def run(
         model, tokenizer = loaded[0], loaded[1]
         engine = Engine(model, tokenizer, spec.family, lease, guard)
         results: dict[str, Any] = {}
+        cache_dir = RUNS_DIR / "eval" / (label or spec.id)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         for suite in chosen:
+            cache = cache_dir / f"{suite}-{mode}-{limit or 'all'}.json"
+            if cache.exists():
+                results[suite] = json.loads(cache.read_text())
+                _log.info("suite reused", suite=suite, value=results[suite]["value"], path=str(cache))
+                continue
             t0 = time.time()
             _log.info("suite start", suite=suite, n=limit or sizes[suite])
             res = RUNNERS[suite](engine, sizes[suite], limit)
             res["seconds"] = round(time.time() - t0, 1)
             res.update({k: v for k, v in SUITE_INFO[suite].items()})
             results[suite] = res
+            cache.write_text(json.dumps(res, default=str))
             _log.info("suite done", suite=suite, value=res["value"], n=res["n"], seconds=res["seconds"])
         peak = mx.get_peak_memory() / 1e9
         del model, engine

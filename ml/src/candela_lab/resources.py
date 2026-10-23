@@ -75,6 +75,14 @@ def _swap() -> tuple[float, float]:
     return sw.used / GB, sw.total / GB
 
 
+def _available_bytes(stats: dict[str, int], fallback: int) -> int:
+    """free + inactive + purgeable + speculative pages: memory the kernel can hand out without swapping."""
+    keys = ("Pages free", "Pages inactive", "Pages purgeable", "Pages speculative")
+    if not all(k in stats for k in keys):
+        return fallback
+    return sum(stats[k] for k in keys)
+
+
 def pressure_level() -> Pressure:
     raw = _sysctl("kern.memorystatus_vm_pressure_level")
     if raw is None or not raw.isdigit():
@@ -89,7 +97,7 @@ def snapshot() -> MemorySnapshot:
     return MemorySnapshot(
         at=time.time(),
         total_gb=vm.total / GB,
-        available_gb=vm.available / GB,
+        available_gb=_available_bytes(stats, vm.available) / GB,
         free_gb=stats.get("Pages free", int(vm.free)) / GB,
         inactive_gb=stats.get("Pages inactive", 0) / GB,
         wired_gb=stats.get("Pages wired down", 0) / GB,
@@ -265,25 +273,32 @@ class ResourceGuard:
             return GuardDecision(False, f"swap grew {growth:.2f} GB in {window_min:.0f} min", snap)
         return GuardDecision(True, "ok", snap)
 
-    def wait_for_recovery(self, recover_sec: float | None = None) -> float:
-        need = self.required_start_gb()
+    def wait_for_recovery(self, recover_sec: float | None = None, holding_model: bool = False) -> float:
+        """Waits until the machine is healthy again for `recover_sec`.
+
+        A process that released its model needs the full start threshold. A process that still holds its model
+        (MLX/Metal memory is not visible as free) only needs `pause_below_gb` + 1 GB of headroom. Swap growth only
+        blocks recovery while the kernel also reports memory pressure, so a one-off swap jump pauses briefly.
+        """
+        need = self.policy.pause_below_gb + 1.0 if holding_model else self.required_start_gb()
         hold = self.policy.recover_sec if recover_sec is None else recover_sec
         started = time.time()
         healthy_since: float | None = None
         while True:
             snap = self.sample(force=True)
+            swap_ok = snap.pressure == "normal" or self.swap_growth_gb() <= self.policy.swap_growth_gb
             healthy = (
                 not foreign_training()
                 and snap.available_gb >= need
                 and snap.pressure != "critical"
-                and self.swap_growth_gb() <= self.policy.swap_growth_gb
+                and swap_ok
             )
             now = time.time()
             if healthy:
                 healthy_since = healthy_since or now
                 if now - healthy_since >= hold:
                     waited = now - started
-                    _log.info("recovered", waited_sec=round(waited), **snap.as_dict())
+                    _log.info("recovered", waited_sec=round(waited), need_gb=need, **snap.as_dict())
                     return waited
             else:
                 healthy_since = None
@@ -291,6 +306,8 @@ class ResourceGuard:
                 "paused, waiting for recovery",
                 available_gb=round(snap.available_gb, 2),
                 need_gb=need,
+                pressure=snap.pressure,
+                swap_growth_gb=round(self.swap_growth_gb(), 2),
                 healthy_for_sec=round(now - healthy_since) if healthy_since else 0,
                 hold_sec=hold,
             )
