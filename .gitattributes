@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+pnpm-lock.yaml linguist-generated=true -diff
+uv.lock linguist-generated=true -diff
+go.sum linguist-generated=true -diff
+**/internal/store/db/*.go linguist-generated=true

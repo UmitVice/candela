@@ -1,0 +1,12 @@
+title = "candela"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Lockfiles contain integrity hashes, not secrets"
+paths = [
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)uv\.lock$''',
+  '''(^|/)go\.sum$''',
+]

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() {
+  printf 'pre-commit: %s\n' "$1" >&2
+  exit 1
+}
+
+command -v gitleaks >/dev/null 2>&1 || fail "gitleaks is required (brew install gitleaks)"
+
+max_bytes=$((5 * 1024 * 1024))
+blocked_pattern='(^|/)\.env($|\.)|\.(pem|key|crt|p12|pfx|jks|keystore|gguf|safetensors|npz|pt|pth|ckpt|onnx|parquet|arrow|db|sqlite|sqlite3)$'
+problems=""
+
+while IFS= read -r -d '' path; do
+  if [[ "$path" =~ $blocked_pattern ]] && [[ ! "$path" =~ (^|/)\.env\.example$ ]]; then
+    problems+="  blocked file type: $path"$'\n'
+    continue
+  fi
+  size=$(git cat-file -s ":$path" 2>/dev/null || echo 0)
+  if (( size > max_bytes )); then
+    problems+="  larger than 5 MiB: $path ($size bytes)"$'\n'
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+[[ -z "$problems" ]] || fail $'refusing to commit:\n'"$problems"
+
+if ! gitleaks git --pre-commit --staged --redact --no-banner --log-level warn; then
+  fail "gitleaks found potential secrets in staged changes"
+fi

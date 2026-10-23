@@ -1,0 +1,94 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*.secret
+secrets/
+.secrets/
+credentials*.json
+service-account*.json
+token*.json
+.netrc
+
+# OS and editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.claude/settings.local.json
+.claude/*.local.*
+
+# Logs and scratch
+*.log
+logs/
+tmp/
+.tmp/
+.cache/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+.netlify/
+coverage/
+*.tsbuildinfo
+
+# Go
+/services/gateway/bin/
+*.test
+*.out
+*.prof
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# ML data, weights and run outputs (large, regenerable or license-restricted)
+/data/
+/models/
+/ml/data/
+/ml/artifacts/
+/ml/runs/
+/ml/checkpoints/
+/ml/models/
+/ml/hf_cache/
+/services/worker/models/
+mlruns/
+wandb/
+*.safetensors
+*.gguf
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.arrow
+*.parquet
+*.h5
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
