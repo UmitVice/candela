@@ -6,18 +6,18 @@ import time
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
-from mlx.utils import tree_flatten, tree_map
+from mlx.utils import tree_map
 
 from candela_spark import log, paths
 from candela_spark.data import config as data_config
 from candela_spark.data.loader import Cursor, MixtureLoader, validation_windows
-from candela_spark.model.config import PRESETS, ModelConfig
+from candela_spark.model.config import PRESETS, ModelConfig, param_counts
 from candela_spark.model.transformer import SparkLM
 from candela_spark.ops import resources, status
 from candela_spark.ops.lease import GpuLease
@@ -28,6 +28,14 @@ from candela_spark.train.optim import SparkOptimizer
 from candela_spark.train.schedule import WSD
 
 _log = log.get("trainer")
+# EX_TEMPFAIL: launchd's KeepAlive (SuccessfulExit = false) restarts us, and the restart waits before loading.
+EXIT_YIELD = 75
+
+
+class YieldGpu(Exception):
+    pass
+
+
 OVERRIDE_FILE = paths.SPARK_STATE / "override.json"
 
 
@@ -92,6 +100,7 @@ class Trainer:
         self.milestones: list[dict[str, Any]] = []
         self.next_milestone_tokens = cfg.milestone_every_tokens
         self._env_checked_at = 0.0
+        self.yield_reason: str | None = None
         self._env_reason: str | None = None
 
     def event(self, kind: str, **fields: Any) -> None:
@@ -251,13 +260,15 @@ class Trainer:
                 reason = "paused by override"
             elif override.get("simulateBattery") and not self._env_reason:
                 reason = "on battery power"
+            elif self._env_reason and self._env_reason.startswith("external training"):
+                raise YieldGpu(self._env_reason)
             elif self._env_reason:
                 reason = self._env_reason
             else:
                 higher = self.lease.higher()
                 if higher:
                     top = max(higher, key=lambda le: le.priority)
-                    reason = f"yielding to {top.holder} (priority {top.priority})"
+                    raise YieldGpu(f"{top.holder} (priority {top.priority}, {top.state})")
                 else:
                     decision = self.guard.step() if waited_since is None else self.guard.start()
                     if not decision.ok:
@@ -305,9 +316,7 @@ class Trainer:
                 "state": state,
                 "runId": self.cfg.run_id,
                 "model": self.mcfg.name,
-                "parameters": int(
-                    sum(cast(mx.array, v).size for _, v in tree_flatten(self.model.parameters()))
-                ),
+                "parameters": param_counts(self.mcfg)["total"],
                 "phase": self.schedule.phase(self.step),
                 "step": self.step,
                 "tokens": self.tokens,
@@ -326,8 +335,10 @@ class Trainer:
         resources.apply_mlx_limits(cfg.memory_budget_gb, cfg.cache_limit_gb)
         signal.signal(signal.SIGTERM, self._signal)
         signal.signal(signal.SIGINT, self._signal)
-        self.lease.acquire()
+        self.lease.acquire(state="waiting")
         try:
+            if not self._wait_before_load():
+                return 0
             self._build()
             self.publish_status("starting")
             while not self.stop_requested:
@@ -343,6 +354,7 @@ class Trainer:
                 self.publish_status("waiting")
                 _log.info("waiting before start", reason=self.pause_reason)
                 time.sleep(15)
+            self.lease.set_state("active")
             self.last_ckpt_at = time.time()
             window_t0, window_tokens, window_losses = time.time(), 0, []
             if self.step == 0 and self.last_val is None:
@@ -352,7 +364,11 @@ class Trainer:
                     cfg.max_steps is not None and self.step >= cfg.max_steps
                 ):
                     break
-                if not self._gate():
+                try:
+                    if not self._gate():
+                        break
+                except YieldGpu as exc:
+                    self.yield_reason = str(exc)
                     break
                 t0 = time.time()
                 self.opt.set_lr_mult(self.schedule.mult(self.step))
@@ -405,6 +421,8 @@ class Trainer:
                     self.save("token milestone", milestone=True)
                 elif time.time() - self.last_ckpt_at >= cfg.checkpoint_every_sec:
                     self.save("periodic")
+            if self.yield_reason:
+                return self._yield_exit()
             if self.stop_requested:
                 self.save(f"signal {self.stop_signal}")
                 self.publish_status("stopped")
@@ -417,6 +435,47 @@ class Trainer:
             return 0
         finally:
             self.lease.release()
+
+    def _outranked(self) -> str | None:
+        higher = self.lease.higher()
+        if higher:
+            top = max(higher, key=lambda le: le.priority)
+            return f"{top.holder} (priority {top.priority}, {top.state})"
+        foreign = resources.foreign_training()
+        return f"external training running ({foreign[0]})" if foreign else None
+
+    def _wait_before_load(self) -> bool:
+        """Contract rule 8: nothing is loaded onto the GPU while a higher-priority lease or a foreign
+        training process is live. Returns False if a stop was requested while waiting."""
+        since = None
+        while not self.stop_requested:
+            reason = self._outranked()
+            if reason is None:
+                if since is not None:
+                    self.event(
+                        "start_after_wait", reason=self.pause_reason, waitedSec=round(time.time() - since)
+                    )
+                    _log.info(
+                        "starting after wait", reason=self.pause_reason, waited=round(time.time() - since)
+                    )
+                self.pause_reason = None
+                return True
+            if since is None:
+                since = time.time()
+                self.event("wait_before_load", reason=reason)
+                _log.info("waiting before loading the model", reason=reason)
+            self.pause_reason = f"waiting for {reason}"
+            self.publish_status("waiting")
+            time.sleep(5)
+        return False
+
+    def _yield_exit(self) -> int:
+        self.save(f"yield to {self.yield_reason}")
+        self.event("yield_exit", reason=self.yield_reason)
+        _log.info("checkpointed and exiting to free GPU memory", reason=self.yield_reason, step=self.step)
+        self.pause_reason = f"yielded to {self.yield_reason}"
+        self.publish_status("yielded")
+        return EXIT_YIELD
 
     def _eval(self) -> None:
         t0 = time.time()

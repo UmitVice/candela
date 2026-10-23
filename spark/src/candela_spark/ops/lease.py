@@ -39,6 +39,7 @@ class Lease:
     pid: int
     priority: int
     purpose: str
+    state: str = "active"
 
 
 def live_leases(directory: Path = paths.LEASES) -> list[Lease]:
@@ -54,7 +55,15 @@ def live_leases(directory: Path = paths.LEASES) -> list[Lease]:
             fresh = now - _parse(raw["heartbeatAt"]) < LIVE_SEC
             pid = int(raw["pid"])
             if fresh and _pid_alive(pid):
-                out.append(Lease(raw["holder"], pid, int(raw["priority"]), str(raw.get("purpose", ""))))
+                out.append(
+                    Lease(
+                        raw["holder"],
+                        pid,
+                        int(raw["priority"]),
+                        str(raw.get("purpose", "")),
+                        str(raw.get("state", "active")),
+                    )
+                )
         except OSError, ValueError, KeyError:
             continue
     return out
@@ -68,6 +77,7 @@ class GpuLease:
         self.dir = directory
         self.path = directory / f"{holder}.json"
         self._started = _now()
+        self.state = "active"
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -79,6 +89,7 @@ class GpuLease:
             "pid": os.getpid(),
             "priority": self.priority,
             "purpose": self.purpose,
+            "state": self.state,
             "startedAt": self._started,
             "heartbeatAt": _now(),
         }
@@ -94,12 +105,17 @@ class GpuLease:
             self.purpose = purpose
         self._write()
 
-    def acquire(self) -> None:
+    def set_state(self, state: str) -> None:
+        self.state = state
+        self._write()
+
+    def acquire(self, state: str = "active") -> None:
+        self.state = state
         self._write()
         self._stop.clear()
         self._thread = threading.Thread(target=self._beat, name="lease-heartbeat", daemon=True)
         self._thread.start()
-        _log.info("lease acquired", holder=self.holder, priority=self.priority)
+        _log.info("lease acquired", holder=self.holder, priority=self.priority, state=self.state)
 
     def _beat(self) -> None:
         while not self._stop.wait(HEARTBEAT_SEC):

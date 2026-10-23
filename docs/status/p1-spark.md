@@ -94,3 +94,16 @@ Notes for the next phases:
 - Daemon controls: stop with `make spark-daemon-uninstall` (SIGTERM, checkpoint); pause with `{"pause": true}` in `~/.candela/spark/override.json`; check with `make spark-daemon-status`.
 - **Next Spark release**: fork a new decay branch from a later main-run checkpoint (`spark/configs/train/spark-35m-m1.yaml` with a new `run_id` and `fork_step`), then run `spark export` / `spark eval` / `spark observatory export` / `spark publish`.
 - **p3-spark**: scaling study (extend the LR grid above 0.04, coordinate checks for μP transfer) and growth operators to move to spark-125m.
+
+## Follow-up: GPU lease reservations (contract rules 7–9)
+
+STATUS: done
+
+- **Leases:** every lease now writes `"state"`. `gpu_job` (eval, export, attention maps) writes `waiting` before its memory check and switches to `active` once it passes. The trainer is `waiting` until its model is loaded.
+- **Yielding:** the trainer treats any live higher-priority lease, `waiting` or `active`, as a reason to give the GPU back. At the next step boundary it checkpoints, releases the lease and exits with code 75 (EX_TEMPFAIL). A foreign training process (`train_mlx`, `mlx_lm`) now causes the same checkpoint-and-exit instead of an in-process pause. Battery, thermal, override and memory-guard pauses still wait in-process.
+- **Restart:** launchd restarts the trainer (KeepAlive SuccessfulExit = false, ThrottleInterval 60). On start it waits, polling every 5 s with nothing loaded, until no higher-priority lease or foreign training remains. That wait is what prevents a hot loop. SIGTERM (uninstall) still exits 0, so launchd does not restart it.
+- **Verified on the reloaded daemon** with a fake priority-60 `waiting` lease, `lab-eval-sim`, live for 100 s:
+  - The lease was written at 17:35:54Z. The trainer checkpointed `step-00005688` at 17:35:55Z and exited 75 (`last exit code = 75: EX_TEMPFAIL`).
+  - launchd restarted it (`runs = 2`). The new process logged `wait_before_load` and sat at about 60 MB RSS, with no model loaded and its GPU memory freed.
+  - When the lease was removed it logged `start_after_wait` (waited 91 s) and resumed from `step-00005688` at 17:37:37Z.
+- `make spark-check` passes. The daemon is reinstalled and training `spark-35m-main` at priority 20.
