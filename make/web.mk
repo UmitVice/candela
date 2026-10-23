@@ -1,6 +1,7 @@
 WEB_DIR := apps/web
 WEB_NETLIFY_SITE := 29663355-ecbd-43e8-8b32-9fade3ae572b
 WEB_NETLIFY := pnpm --package=netlify-cli@27.14.2 dlx netlify
+WEB_VERSION = $(shell node -p "require('./$(WEB_DIR)/package.json').version")
 
 .PHONY: web-install web-dev web-lint web-format web-build web-check web-render web-preview web-deploy web-icons
 
@@ -32,7 +33,7 @@ web-preview: web-build web-render ## Serve the rendered production dist with Net
 	node $(WEB_DIR)/scripts/preview.mjs
 
 web-deploy: web-check web-render ## Deploy the locally built dist to Netlify (production, no remote build)
-	cd $(WEB_DIR) && $(WEB_NETLIFY) deploy --prod --no-build --dir dist --site $(WEB_NETLIFY_SITE) --message "candela-web $$(node -p 'require(\"./package.json\").version') $$(git rev-parse --short HEAD)"
+	cd $(WEB_DIR) && $(WEB_NETLIFY) deploy --prod --no-build --dir dist --site $(WEB_NETLIFY_SITE) --message "candela-web $(WEB_VERSION) $$(git rev-parse --short HEAD)"
 
 web-icons: ## Regenerate PNG icons from the brand mark
 	cd $(WEB_DIR) && node scripts/generate-icons.mjs
