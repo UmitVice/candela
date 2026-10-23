@@ -107,7 +107,7 @@ class Trainer:
             "tokens": self.tokens,
             "cursor": self.loader.cursor.to_dict(),
             "seed": self.cfg.seed,
-            "mxRandomState": [np.asarray(a).tolist() for a in cast(list[mx.array], mx.random.state)],
+            "rngSeed": self.cfg.seed + self.step,
             "schedule": {
                 "warmupSteps": self.schedule.warmup_steps,
                 "decayStart": self.schedule.decay_start,
@@ -171,9 +171,8 @@ class Trainer:
         self.elapsed_train_sec = float(state.get("elapsedTrainSec", 0.0))
         self.last_val = state.get("lastVal")
         self.milestones = list(state.get("milestones", [])) if source == "own" else []
-        cast(list[mx.array], mx.random.state)[0] = mx.array(
-            np.asarray(state["mxRandomState"][0], dtype=np.uint32)
-        )
+        # Nothing stochastic runs after init (no dropout; data order is the cursor), so a step seed suffices.
+        mx.random.seed(self.cfg.seed + self.step)
         self.loader = MixtureLoader(
             self.dcfg, self.cfg.seq_len, self.cfg.seed, Cursor.from_dict(state["cursor"])
         )
@@ -411,10 +410,9 @@ class Trainer:
                 self.publish_status("stopped")
                 return 0
             self._eval()
-            self.milestones.append(
-                {"step": self.step, "tokens": self.tokens, "at": now_iso(), "kind": "final"}
-            )
-            self.save("finished", milestone=True)
+            kind = "release" if self.schedule.done(self.step) else "fork-point"
+            self.milestones.append({"step": self.step, "tokens": self.tokens, "at": now_iso(), "kind": kind})
+            self.save(f"finished ({kind})", milestone=True)
             self.publish_status("finished")
             return 0
         finally:
