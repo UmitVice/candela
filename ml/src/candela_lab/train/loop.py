@@ -342,11 +342,7 @@ def session(
         window_loss += step_loss / accum
         window_n += 1
         if state.step % report_every == 0 or state.step == iters:
-            lr = (
-                to_float(optimizer.learning_rate)
-                if isinstance(optimizer.learning_rate, mx.array)
-                else 0.0
-            )
+            lr = to_float(optimizer.learning_rate) if isinstance(optimizer.learning_rate, mx.array) else 0.0
             row = {
                 "type": "train",
                 "step": state.step,
