@@ -8,7 +8,7 @@ Several Candela processes share one Apple Silicon GPU and 24 GB of unified memor
 
 ```json
 { "protocol": "candela.gpu-lease.v1", "holder": "spark-trainer", "pid": 12345, "priority": 20,
-  "purpose": "spark pretraining step loop", "startedAt": "2026-10-23T12:00:00Z", "heartbeatAt": "2026-10-23T12:00:10Z" }
+  "purpose": "spark pretraining step loop", "state": "active", "startedAt": "2026-10-23T12:00:00Z", "heartbeatAt": "2026-10-23T12:00:10Z" }
 ```
 
 ## Priorities
@@ -28,3 +28,11 @@ Several Candela processes share one Apple Silicon GPU and 24 GB of unified memor
 4. The worker writes its lease only while a job runs, so idle periods give lower priorities the GPU back immediately.
 5. Stale lease files (dead pid or heartbeat older than 30 s) are ignored and may be deleted by anyone.
 6. Leases never override the memory resource guard or the owner's processes: anything outside Candela always wins. In particular, no Candela training or GPU-heavy evaluation runs while a foreign training process is alive (command lines such as `train_mlx`, `mlx_lm.lora`, `mlx_lm_lora`); trainers check this at start and at every pause check.
+
+## Reservations (v1.1)
+
+A higher-priority job that is waiting for memory must not be blocked by lower-priority holders that occupy that memory (priority inversion).
+
+7. A job that intends to run writes its lease file **before** waiting for memory, with `"state": "waiting"` (same heartbeat rules). A live lease with higher priority counts the same whether `waiting` or `active`.
+8. On seeing a live higher-priority lease (either state), a lower-priority holder stops at its next step boundary, checkpoints, and releases its GPU memory completely — for a process that cannot unload its model in place (for example the Spark daemon), that means checkpoint and exit; its supervisor restarts it, and on start it waits until no higher-priority lease is live before loading anything.
+9. The waiting job switches its state to `active` once its memory check passes; it still deletes its file on exit.
