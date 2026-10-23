@@ -26,23 +26,31 @@ def _render(
     return tokenizer.apply_chat_template(messages, **kwargs)
 
 
-def _common_prefix(a: str, b: str) -> int:
+def _boundary_prefix(a: str, b: str) -> int:
+    """Longest common prefix of a and b, cut back to a token boundary (after '>' or a newline) so special tokens
+    such as Gemma's `<|channel>` and `<|tool_call>` are never split."""
     n = min(len(a), len(b))
     i = 0
     while i < n and a[i] == b[i]:
         i += 1
+    while i > 0 and a[i - 1] not in ">\n":
+        i -= 1
     return i
 
 
 def encode(tokenizer: Any, sample: Example) -> Encoded:
     """Prompt = conversation before the final assistant message rendered with the generation prompt (exactly what the
     model sees at inference, e.g. Gemma's empty thought channel); completion = what the template renders for that
-    message. Only completion tokens are supervised."""
+    message after the turn header. Only completion tokens are supervised."""
     messages = sample["messages"]
     tools = sample.get("tools")
+    base = _render(tokenizer, messages[:-1], tools, gen=False)
     prompt = _render(tokenizer, messages[:-1], tools, gen=True)
     full = _render(tokenizer, messages, tools, gen=False)
-    completion = full[_common_prefix(prompt, full) :]
+    if not (prompt.startswith(base) and full.startswith(base)):
+        raise ValueError(f"{sample['meta']['id']}: chat template is not prefix-stable")
+    suffix, rest = prompt[len(base) :], full[len(base) :]
+    completion = rest[_boundary_prefix(suffix, rest) :]
     if not completion.strip():
         raise ValueError(f"{sample['meta']['id']}: empty completion")
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)

@@ -139,7 +139,7 @@ def analysis_script(symbol: str, history_range: str = "1Y") -> Callable[[compose
             ("get_quote", {"symbol": symbol}),
             ("get_price_history", {"symbol": symbol, "range": history_range}),
             ("get_technical_indicators", {"symbol": symbol}),
-            ("get_fundamentals", {"symbol": symbol}),
+            ("get_fundamentals", {"symbol": symbol, "limit": 2}),
             ("get_forecast", {"symbol": symbol}),
         ]
         results = yield calls
@@ -317,7 +317,7 @@ def compare_script(symbols: list[str]) -> Callable[[compose.Writer], TurnScript]
             calls += [
                 ("get_quote", {"symbol": s}),
                 ("get_price_history", {"symbol": s, "range": "1Y"}),
-                ("get_fundamentals", {"symbol": s}),
+                ("get_fundamentals", {"symbol": s, "limit": 2}),
             ]
         results = yield calls
         vs = views(results)

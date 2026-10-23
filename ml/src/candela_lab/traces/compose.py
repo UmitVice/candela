@@ -135,20 +135,55 @@ def trend_section(w: Writer, ind: dict[str, Any] | None, hist: dict[str, Any] | 
     return "\n".join(lines), score
 
 
+def _join(parts: list[str]) -> str:
+    return ", ".join(p for p in parts if p)
+
+
 def fundamentals_section(w: Writer, f: dict[str, Any]) -> str:
-    p = f["periods"][0]
-    r = f["ratios"]
-    label = f"FY{p['fy']}" if p["fp"] == "FY" else f"{p['fp']} {p['fy']}"
-    rows = [
-        f"- **{label}** (period ending {p['end']}): revenue {big(w, p['revenue'])}, net income "
-        f"{big(w, p['netIncome'])}, diluted EPS {money(p['epsDiluted'])}.",
-        f"- Margins: gross {pct(r['grossMarginPct'])}, operating {pct(r['operatingMarginPct'])}, net "
-        f"{pct(r['netMarginPct'])}; free-cash-flow margin {pct(r['fcfMarginPct'])}.",
-        f"- Growth vs a year earlier: revenue {signed_pct(r['revenueGrowthPct'])}, EPS {signed_pct(r['epsGrowthPct'])}.",
-        f"- Balance sheet: cash {big(w, p['cash'])}, long-term debt {big(w, p['longTermDebt'])}, "
-        f"debt-to-assets {num(r['debtToAssets'])} (long-term debt as a share of total assets).",
-    ]
-    return "\n".join(rows)
+    p = f["periods"][0] if f.get("periods") else {}
+    r = f.get("ratios", {})
+    rows = []
+    if p:
+        label = f"FY{p['fy']}" if p.get("fp") == "FY" else f"{p.get('fp', '')} {p.get('fy', '')}".strip()
+        items = _join(
+            [
+                f"revenue {big(w, p['revenue'])}" if "revenue" in p else "",
+                f"net income {big(w, p['netIncome'])}" if "netIncome" in p else "",
+                f"diluted EPS {money(p['epsDiluted'])}" if "epsDiluted" in p else "",
+            ]
+        )
+        if items:
+            rows.append(f"- **{label}** (period ending {p.get('end', 'n/a')}): {items}.")
+    margins = _join(
+        [
+            f"gross {pct(r['grossMarginPct'])}" if "grossMarginPct" in r else "",
+            f"operating {pct(r['operatingMarginPct'])}" if "operatingMarginPct" in r else "",
+            f"net {pct(r['netMarginPct'])}" if "netMarginPct" in r else "",
+            f"free-cash-flow {pct(r['fcfMarginPct'])}" if "fcfMarginPct" in r else "",
+        ]
+    )
+    if margins:
+        rows.append(f"- Margins: {margins}.")
+    growth = _join(
+        [
+            f"revenue {signed_pct(r['revenueGrowthPct'])}" if "revenueGrowthPct" in r else "",
+            f"EPS {signed_pct(r['epsGrowthPct'])}" if "epsGrowthPct" in r else "",
+        ]
+    )
+    if growth:
+        rows.append(f"- Growth vs a year earlier: {growth}.")
+    balance = _join(
+        [
+            f"cash {big(w, p['cash'])}" if "cash" in p else "",
+            f"long-term debt {big(w, p['longTermDebt'])}" if "longTermDebt" in p else "",
+            f"debt-to-assets {num(r['debtToAssets'])} (long-term debt as a share of total assets)"
+            if "debtToAssets" in r
+            else "",
+        ]
+    )
+    if balance:
+        rows.append(f"- Balance sheet: {balance}.")
+    return "\n".join(rows) or "- The filing data returned no comparable line items."
 
 
 def forecast_section(w: Writer, fc: dict[str, Any]) -> str:
@@ -182,13 +217,17 @@ def risks_section(w: Writer, score: int, ind: dict[str, Any] | None, f: dict[str
         if ind["atrPct"] > 4:
             bear.append("daily swings are large, so position risk is elevated")
     if f:
-        r = f["ratios"]
-        (bull if r["revenueGrowthPct"] > 0 else bear).append(
-            "revenue is growing" if r["revenueGrowthPct"] > 0 else "revenue is shrinking"
-        )
-        (bull if r["operatingMarginPct"] > 20 else bear).append(
-            "operating margins are healthy" if r["operatingMarginPct"] > 20 else "operating margins are thin"
-        )
+        r = f.get("ratios", {})
+        if "revenueGrowthPct" in r:
+            (bull if r["revenueGrowthPct"] > 0 else bear).append(
+                "revenue is growing" if r["revenueGrowthPct"] > 0 else "revenue is shrinking"
+            )
+        if "operatingMarginPct" in r:
+            (bull if r["operatingMarginPct"] > 20 else bear).append(
+                "operating margins are healthy"
+                if r["operatingMarginPct"] > 20
+                else "operating margins are thin"
+            )
     if not bull:
         bull.append("a turn in momentum or better fundamentals would change the picture")
     if not bear:

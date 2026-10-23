@@ -1,7 +1,7 @@
 version: d0.1
 seed: 20261023
 validFraction: 0.04
-maxTokens: 2048
+maxTokens: 4096
 tokenizerModel: gemma-4-12b-qat
 today: "2026-10-22"
 

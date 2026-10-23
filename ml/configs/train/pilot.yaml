@@ -1,0 +1,19 @@
+# Candela Pro pilot: short QLoRA run on a d0.1 subset to validate the pipeline end to end (not a release).
+model: gemma-4-12b-qat
+pilot: true
+observatory: {modelId: candela-pro-pilot, displayName: "Candela Pro · pilot", version: v0.1-pilot}
+data: {version: d0.1, trainSubset: 1600, validSubset: 48}
+lora: {numLayers: 16}
+iters: 120
+gradAccumulation: 8
+batchSize: 1
+maxSeqLength: 4096
+gradCheckpoint: true
+headChunk: 256
+evalEvery: 40
+validBatches: 48
+saveEvery: 20
+reportEvery: 1
+optimizer: {learningRate: 1.0e-4, warmup: 8, minLrRatio: 0.1, gradClip: 1.0, weightDecay: 0.0}
+memory: {budgetGb: 9.0, cacheGb: 0.5}
+seed: 7
