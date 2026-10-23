@@ -90,6 +90,7 @@ Do not use, stop or reconfigure anything you did not start, especially the owner
 ## Resource budget
 
 - The owner keeps working on other projects on this machine (often a 9 GB `llama-server`). Never kill, restart or reconfigure processes you did not start.
+- **One session at a time and one training at a time** (owner rule): the Director runs phase sessions sequentially. Never train two models simultaneously, and that includes the owner's own trainings (for example `evidencedesk_ml.train_mlx`): every trainer and GPU-heavy evaluation detects foreign training processes and waits while one runs, doing CPU-only work meanwhile.
 - Candela memory budget: Pro training peak ≤ 9 GB; Pro inference ≤ 8 GB, loaded only on demand; Spark trainer ≤ 4 GB. Every GPU job uses a memory resource guard (waits for headroom, checkpoints and pauses under pressure) and the GPU lease protocol in `contracts/gpu-lease.md` (live inference > Pro training > evaluation > Spark).
 - Long jobs (training, evaluation, bulk downloads): `caffeinate -i nice -n 10 <cmd>`, run in the background, log under `ml/runs/<run-id>/`. You are notified when a background command exits: never busy-poll or sleep-loop in the foreground.
 - Keep builds modest (`GOMAXPROCS=4`, no parallel heavy builds). Stop every server or watcher you started before ending your turn unless your brief says to keep it running.

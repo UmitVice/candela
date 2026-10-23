@@ -112,7 +112,7 @@ ADR 0008 is binding: single narrow ingress (cloudflared → loopback public list
 | 4 | `p4-polish` | batch 3 | portfolio polish, README, case study, release v0.1.0 |
 | 5+ | `p5-pro-v02`, `p5-spark-grow`, `p6-vaniras` | owner data / batch 4 | better data and preference tuning from feedback; larger Spark sizes and Spark chat tuning; Vaniras integration |
 
-Each brief lives in `docs/plan/<phase>.md`; each session reports in `docs/status/<phase>.md`. The Director verifies every batch (status reports, commits, a smoke run) before starting the next.
+Owner rule (2026-10-23): sessions run **one at a time**, in this order: `p1-spark` → `p1-gateway` → `p1-ml` → `p1-web` → `p2-train` → `p2-worker` → `p2-web` → `p3-deploy` → `p3-observatory` → `p3-spark` → `p4-polish`; batches above describe dependencies, not concurrency. Each brief lives in `docs/plan/<phase>.md`; each session reports in `docs/status/<phase>.md`. The Director verifies every batch (status reports, commits, a smoke run) before starting the next.
 
 ## 12. Optional owner actions (never blocking)
 

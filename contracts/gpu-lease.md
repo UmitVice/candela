@@ -27,4 +27,4 @@ Several Candela processes share one Apple Silicon GPU and 24 GB of unified memor
 3. Equal priorities do not preempt each other; at most one holder per priority level should exist.
 4. The worker writes its lease only while a job runs, so idle periods give lower priorities the GPU back immediately.
 5. Stale lease files (dead pid or heartbeat older than 30 s) are ignored and may be deleted by anyone.
-6. Leases never override the memory resource guard or the owner's processes: anything outside Candela always wins.
+6. Leases never override the memory resource guard or the owner's processes: anything outside Candela always wins. In particular, no Candela training or GPU-heavy evaluation runs while a foreign training process is alive (command lines such as `train_mlx`, `mlx_lm.lora`, `mlx_lm_lora`); trainers check this at start and at every pause check.
