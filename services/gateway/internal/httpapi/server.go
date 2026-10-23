@@ -62,9 +62,10 @@ func New(d Deps, hardStop context.Context) *Server {
 
 func (s *Server) SetDraining() { s.draining.Store(true) }
 
-func (s *Server) common(r chi.Router, listener string) {
+func (s *Server) common(r chi.Router, listener string, extra ...func(http.Handler) http.Handler) {
 	r.Use(withRequestID, withClientIP(ipResolver{mode: s.cfg.TrustedProxy, prefixes: s.cfg.ProxyPrefixes()}),
 		withAccessLog(listener, s.log, s.metrics), withRecover(s.log), withSecurityHeaders)
+	r.Use(extra...)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusNotFound, "not_found", "no such route", 0)
 	})
@@ -79,8 +80,7 @@ func (s *Server) common(r chi.Router, listener string) {
 
 func (s *Server) Public() http.Handler {
 	r := chi.NewRouter()
-	s.common(r, "public")
-	r.Use(withCORS(s.cfg.AllowedOrigins))
+	s.common(r, "public", withCORS(s.cfg.AllowedOrigins))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(withDeadline(10*time.Second), middleware.Compress(5, "application/json"))

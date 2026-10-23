@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -461,6 +462,7 @@ func (st *runState) runTools(ctx context.Context, calls []llm.ToolCall) []tools.
 			o.metrics.ToolErrors.WithLabelValues(metricToolName(o.tools, c.Name), r.Code).Inc()
 		}
 		_ = st.emit("tool_result", data)
+		st.log.Debug("tool executed", "tool", c.Name, "ok", r.OK, "modelViewSha256", sha(r.ModelView), "modelViewBytes", len(r.ModelView))
 	}
 	return results
 }
@@ -470,6 +472,11 @@ func metricToolName(r *tools.Registry, name string) string {
 		return name
 	}
 	return "unknown"
+}
+
+func sha(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
 }
 
 func randomHex(n int) string {

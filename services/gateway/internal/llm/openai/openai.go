@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/UmitVice/candela/services/gateway/internal/llm"
@@ -24,6 +25,8 @@ type Client struct {
 	timeout   time.Duration
 	idleLimit time.Duration
 	http      *http.Client
+	toolsOnce sync.Once
+	tools     json.RawMessage
 }
 
 func New(baseURL, apiKey, model string, timeout time.Duration) *Client {
@@ -108,6 +111,39 @@ func encodeMessages(msgs []llm.Message) []wireMessage {
 	return out
 }
 
+// toolsFor drops "pattern" constraints because llama.cpp's schema-to-grammar converter
+// rejects the symbol regex; the gateway validates arguments against the full schema anyway.
+func (c *Client) toolsFor(raw json.RawMessage) json.RawMessage {
+	c.toolsOnce.Do(func() {
+		var v any
+		if json.Unmarshal(raw, &v) != nil {
+			c.tools = raw
+			return
+		}
+		var strip func(any)
+		strip = func(x any) {
+			switch t := x.(type) {
+			case map[string]any:
+				delete(t, "pattern")
+				for _, e := range t {
+					strip(e)
+				}
+			case []any:
+				for _, e := range t {
+					strip(e)
+				}
+			}
+		}
+		strip(v)
+		if b, err := json.Marshal(v); err == nil {
+			c.tools = b
+		} else {
+			c.tools = raw
+		}
+	})
+	return c.tools
+}
+
 func (c *Client) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -147,7 +183,7 @@ func (c *Client) Stream(ctx context.Context, r llm.Request, emit func(llm.Delta)
 		CandelaTelemetry:   r.Params.Telemetry,
 	}
 	if len(r.Tools) > 0 {
-		body.Tools, body.ToolChoice = r.Tools, "auto"
+		body.Tools, body.ToolChoice = c.toolsFor(r.Tools), "auto"
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
