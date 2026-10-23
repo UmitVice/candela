@@ -32,6 +32,7 @@ Several phase sessions may work in this checkout at the same time, each in its o
 
 - Stage and commit only your own paths: `git add -- <paths> && git commit -m "<msg>" -- <paths>`.
 - Forbidden: `git add -A`, `git add .`, `git commit -a`, `git stash`, `git reset --hard`, `git clean`, checking out or restoring other areas' paths, rebases of shared history, amending pushed commits, force pushes, new branches.
+- `apps/web/public/observatory/` is written by ml sessions: web sessions always exclude it (`git add -- apps/web ':(exclude)apps/web/public/observatory'` and the same pathspec on `git commit`); ml sessions stage only that subfolder under `apps/web`.
 - `index.lock` errors: wait 2–5 s and retry. Push with `git push origin main`; if rejected, `git pull --rebase origin main`, then push.
 - Director-owned files: `README.md`, `CLAUDE.md`, root `Makefile`, root `.gitignore`, `.gitleaks.toml`, `.githooks/`, `docs/plan/`, `contracts/`. Propose changes to them in your report instead of editing. Area-specific make targets go in `make/<area>.mk` (always provide `<area>-check`), ignores in `<area>/.gitignore`. Do not add `.github/workflows`.
 
@@ -42,7 +43,7 @@ Several phase sessions may work in this checkout at the same time, each in its o
 | `apps/web` | Angular PWA: Terminal (default) and Observatory (3D design view) | web |
 | `services/gateway` | Go API gateway: chat streaming, tool loop, market data, worker hub | gateway |
 | `services/worker` | Python MLX inference worker (dials out to the gateway) | worker |
-| `ml` | Candela Lab: data, training, evaluation, export, publishing | ml |
+| `ml` | Candela Lab: data, training, evaluation, export, publishing; `ml/nano` holds Candela-Nano (from-scratch model) | ml |
 | `deploy` | Hugging Face Space and Netlify deployment assets | deploy |
 | `contracts` | Shared API, protocol, tool and artifact contracts | Director |
 | `docs` | Plans, ADRs, status reports | all (own files) |
@@ -72,13 +73,23 @@ Verified on 2026-10-23. Pin exact versions in manifests and commit every lockfil
 
 ## Local ports
 
-web `4200`, gateway `8710`, worker HTTP `8711`, dev lite model `llama-server` `8712`.
+Defaults: web `4200`, gateway public `8710` and internal `8719`, worker HTTP `8711`, dev lite model `llama-server` `8712`.
+
+When phases run in parallel, each session that needs its own gateway uses its own port pair and SQLite file (`CANDELA_ADDR`, `CANDELA_INTERNAL_ADDR`, `CANDELA_DB_PATH`); the market snapshot file is shared read-only.
+
+| Session | Gateway public / internal | Other |
+|---|---|---|
+| web phases | 8710 / 8719 | web 4200; owns the dev `llama-server` on 8712 |
+| worker phases | 8720 / 8729 | worker HTTP 8711 |
+| ml phases | 8730 / 8739 (internal tool API only) | |
+| deploy phases | 8710 / 8719 after web sessions stop, otherwise 8740 / 8749 | |
+
 Do not use, stop or reconfigure anything you did not start, especially the owner's `llama-server` on `8080`, PostgreSQL on `5432`, and services on `3150`, `4173`, `8786`.
 
 ## Resource budget
 
 - The owner keeps working on other projects on this machine (often a 9 GB `llama-server`). Never kill, restart or reconfigure processes you did not start.
-- Candela ML memory budget: training peak ≤ 9 GB, inference ≤ 6 GB. Use the resource guard in `ml/` (waits for headroom, checkpoints and pauses under memory pressure).
+- Candela ML memory budget: training peak ≤ 9 GB; inference ≤ 8 GB for the pro model and ≤ 2 GB for lite, loaded only on demand. Use the resource guard in `ml/` (waits for headroom, checkpoints and pauses under memory pressure).
 - Long jobs (training, evaluation, bulk downloads): `caffeinate -i nice -n 10 <cmd>`, run in the background, log under `ml/runs/<run-id>/`. You are notified when a background command exits: never busy-poll or sleep-loop in the foreground.
 - Keep builds modest (`GOMAXPROCS=4`, no parallel heavy builds). Stop every server or watcher you started before ending your turn unless your brief says to keep it running.
 - Models and datasets download to the shared Hugging Face cache (`~/.cache/huggingface`) or `ml/data/` (git-ignored), never into tracked paths.
