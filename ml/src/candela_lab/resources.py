@@ -100,6 +100,33 @@ def snapshot() -> MemorySnapshot:
     )
 
 
+# Owner rule: one training at a time on this machine, including trainings outside Candela.
+FOREIGN_TRAINING_RE = re.compile(
+    r"train_mlx|mlx_lm[ .](lora|tuner|train)|\bmlx_lm\.lora\b|\btrain(er)?\.py\b|torchrun|accelerate launch"
+    r"|-m\s+\S*train\S*|\bspark train\b(?!.*candela/spark)"
+)
+
+
+def foreign_training() -> list[tuple[int, str]]:
+    """Training processes that are not this process (and not Candela Spark, which yields through the GPU lease)."""
+    extra = os.environ.get("CANDELA_FOREIGN_TRAINING_RE")
+    pattern = re.compile(extra) if extra else FOREIGN_TRAINING_RE
+    me = os.getpid()
+    found = []
+    for proc in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            if proc.info["pid"] in (me, os.getppid()):
+                continue
+            cmd = " ".join(proc.info["cmdline"] or [])
+        except psutil.Error:
+            continue
+        if "candela/spark" in cmd or "candela_lab" in cmd or "lab train" in cmd:
+            continue
+        if pattern.search(cmd):
+            found.append((int(proc.info["pid"]), cmd[:120]))
+    return found
+
+
 @dataclass(frozen=True)
 class GuardPolicy:
     start_headroom_gb: float = 3.0
@@ -137,6 +164,14 @@ class ResourceGuard:
     _last_sample: MemorySnapshot | None = None
     _signal_pause: bool = False
     _simulated: set[int] = field(default_factory=set)
+    _last_foreign_check: float = 0.0
+
+    def _foreign_check_due(self) -> bool:
+        now = time.time()
+        if now - self._last_foreign_check >= 30:
+            self._last_foreign_check = now
+            return True
+        return False
 
     def install_signal_handler(self) -> None:
         def handler(_signum: int, _frame: object) -> None:
@@ -169,6 +204,9 @@ class ResourceGuard:
     def start_decision(self) -> GuardDecision:
         snap = self.sample(force=True)
         need = self.required_start_gb()
+        foreign = foreign_training()
+        if foreign:
+            return GuardDecision(False, f"foreign training running (pid {foreign[0][0]})", snap)
         if snap.pressure == "critical":
             return GuardDecision(False, "memory pressure critical", snap)
         if snap.available_gb < need:
@@ -213,6 +251,10 @@ class ResourceGuard:
                 self.pause_file.unlink()
             return GuardDecision(False, f"pause file {self.pause_file.name}", self.sample(force=True))
         snap = self.sample()
+        if self._foreign_check_due():
+            foreign = foreign_training()
+            if foreign:
+                return GuardDecision(False, f"foreign training running (pid {foreign[0][0]})", snap)
         if snap.available_gb < self.policy.pause_below_gb:
             return GuardDecision(
                 False, f"available {snap.available_gb:.2f} GB < {self.policy.pause_below_gb} GB", snap
@@ -231,7 +273,8 @@ class ResourceGuard:
         while True:
             snap = self.sample(force=True)
             healthy = (
-                snap.available_gb >= need
+                not foreign_training()
+                and snap.available_gb >= need
                 and snap.pressure != "critical"
                 and self.swap_growth_gb() <= self.policy.swap_growth_gb
             )

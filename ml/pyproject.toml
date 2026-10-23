@@ -27,6 +27,8 @@ dependencies = [
 
 [dependency-groups]
 dev = ["ruff>=0.14", "pyright>=1.1.407", "types-pyyaml", "types-psutil"]
+# Only for llama.cpp's convert_lora_to_gguf.py (it builds LoRA tensors with torch).
+convert = ["torch==2.14.1", "safetensors>=0.6"]
 
 [project.scripts]
 lab = "candela_lab.cli:app"

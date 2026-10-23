@@ -83,27 +83,6 @@ class ModelSpec:
         return _resolve(self.raw["gguf"]) if "gguf" in self.raw else None
 
 
-# Smoke models exercise code paths quickly when the machine has no headroom for the Pro base;
-# they are never trained for release or reported as Candela results.
-SMOKE_MODELS: dict[str, dict[str, Any]] = {
-    "smoke-qwen3-1.7b": {
-        "family": "qwen3",
-        "displayName": "Qwen3 1.7B (smoke tests only)",
-        "base": {"path": "mlx-community/Qwen3-1.7B-4bit"},
-        "lora": {
-            "rank": 8,
-            "scale": 2.0,
-            "dropout": 0.0,
-            "numLayers": 8,
-            "keys": ["self_attn.q_proj", "self_attn.v_proj", "self_attn.o_proj", "mlp.down_proj"],
-        },
-        "memory": {"trainBudgetGb": 3.0, "inferenceBudgetGb": 2.0},
-        "contextLength": 40960,
-        "chatTemplate": {"toolCallFormat": "hermes-json"},
-    }
-}
-
-
 @cache
 def models_config() -> dict[str, Any]:
     return load_yaml(CONFIGS_DIR / "models.yaml")
@@ -114,10 +93,8 @@ def model(model_id: str | None = None) -> ModelSpec:
     key = model_id or cfg["default"]
     if key in ("pro", "default"):
         key = cfg["default"]
-    if key in SMOKE_MODELS:
-        return ModelSpec(key, SMOKE_MODELS[key])
     if key not in cfg["models"]:
-        raise KeyError(f"unknown model {key!r}; known: {', '.join([*cfg['models'], *SMOKE_MODELS])}")
+        raise KeyError(f"unknown model {key!r}; known: {', '.join(cfg['models'])}")
     return ModelSpec(key, cfg["models"][key])
 
 

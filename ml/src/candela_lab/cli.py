@@ -166,7 +166,7 @@ def train_status(run_id: Annotated[str | None, typer.Argument()] = None) -> None
 
 @eval_app.command("run")
 def eval_run(
-    model: Annotated[str, typer.Argument(help="Model id (gemma-4-12b-qat) or smoke model.")],
+    model: Annotated[str, typer.Argument(help="Model id (gemma-4-12b-qat).")],
     adapter: Annotated[Path | None, typer.Option(help="LoRA adapter directory.")] = None,
     suites: Annotated[list[str] | None, typer.Option("--suite", help="Restrict to these suites.")] = None,
     mode: Annotated[str, typer.Option(help="fast | full")] = "fast",
@@ -203,15 +203,22 @@ def export_fuse(run_id: str, out: Path | None = None) -> None:
 def export_gguf(
     run_id: str,
     quant: str = "Q4_K_M",
-    lora: Annotated[bool, typer.Option(help="Export a GGUF LoRA instead of a fused model.")] = False,
+    lora: Annotated[
+        bool, typer.Option(help="Export the adapter as a GGUF LoRA (PEFT → convert_lora_to_gguf).")
+    ] = True,
+    check: Annotated[
+        bool, typer.Option(help="Load it with llama-server --lora on 127.0.0.1:8713 and compare.")
+    ] = False,
 ) -> None:
-    """Convert a fused model to GGUF (or an adapter to a GGUF LoRA) with the pinned llama.cpp tools."""
+    """Convert a run's adapter to a GGUF LoRA with the pinned llama.cpp converter (fused exports are refused)."""
     from candela_lab.export import gguf
 
-    if lora:
-        gguf.export_lora(run_id)
-    else:
+    if not lora:
         gguf.export_fused(run_id, quant=quant)
+        return
+    gguf.export_lora(run_id)
+    if check:
+        gguf.serve_check(run_id)
 
 
 @observatory_app.command("export")

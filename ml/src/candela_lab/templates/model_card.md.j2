@@ -1,0 +1,53 @@
+---
+license: apache-2.0
+base_model: {{ base_model }}
+library_name: {{ library }}
+tags: [finance, equity-research, tool-use, lora, qlora, gemma4, mlx{% if library == "gguf" %}, gguf{% endif %}]
+datasets: [{{ dataset_repo }}]
+language: [en]
+---
+
+# {{ display_name }} — {{ artifact }}
+
+{{ display_name }} is the Candela Pro equity-research assistant: Gemma 4 12B on Google's QAT int4 weights with a QLoRA adapter trained locally on an Apple M5 Pro. The int4 base stays frozen and unmerged; this repository holds only the {{ artifact }}.
+
+- Base: [`{{ base_model }}`](https://huggingface.co/{{ base_model }}) (QAT int4, loaded unmodified)
+- Run: `{{ run_id }}` · {{ steps }} optimizer steps · dataset `{{ dataset_version }}` · LoRA rank {{ lora.rank }}, scale {{ lora.scale }}, layers {{ layers }}
+- Code: https://github.com/UmitVice/candela (`ml/`)
+{% if pilot %}
+> **Pilot artifact.** This adapter comes from a short pipeline-validation run and is not a release.
+{% endif %}
+## Usage
+
+{% if library == "gguf" -%}
+```bash
+llama-server -m gemma-4-12b-it-qat-q4_0.gguf --lora {{ files[0] }} --jinja
+```
+{%- else -%}
+```python
+from mlx_lm import load, generate
+model, tokenizer = load("<path to Gemma 4 12B QAT MLX int4>", adapter_path="<this repo>")
+```
+{%- endif %}
+
+The model is trained to call the Candela market tools (`contracts/tools.json`) for every number and to answer with Snapshot, Trend & Momentum, Fundamentals, Outlook & Risks and Bottom line sections. It gives educational analysis, never personalized advice.
+
+## Evaluation
+
+{% if eval_rows -%}
+| Suite | Metric | Base | Tuned | Δ |
+|---|---|---:|---:|---:|
+{% for r in eval_rows -%}
+| {{ r.name }} | {{ r.metric }} | {{ "%.3f"|format(r.base) }} | {{ "%.3f"|format(r.tuned) }} | {{ "%+.3f"|format(r.delta) }} |
+{% endfor %}
+{%- else -%}
+No evaluation comparison is available for this run yet.
+{%- endif %}
+
+## Training data
+
+Permissive sources only (see the [data card](https://github.com/UmitVice/candela/blob/main/ml/datacards/{{ dataset_version }}.md)); non-commercial benchmarks are used for evaluation only.
+
+## Limitations
+
+Market numbers must come from tools at inference time; the model is not a source of prices or financials. Not financial advice.
