@@ -7,13 +7,13 @@ lora: {numLayers: 16}
 iters: 120
 gradAccumulation: 8
 batchSize: 1
-maxSeqLength: 4096
+maxSeqLength: 2048
 gradCheckpoint: true
-headChunk: 256
+headChunk: 64
 evalEvery: 40
 validBatches: 48
 saveEvery: 20
 reportEvery: 1
 optimizer: {learningRate: 1.0e-4, warmup: 8, minLrRatio: 0.1, gradClip: 1.0, weightDecay: 0.0}
-memory: {budgetGb: 9.0, cacheGb: 0.5}
+memory: {budgetGb: 10.5, cacheGb: 0.5}
 seed: 7

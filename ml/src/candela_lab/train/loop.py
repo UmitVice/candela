@@ -138,6 +138,12 @@ def build_model(spec: config.ModelSpec, lora: dict[str, Any], grad_ckpt: bool) -
     return model, tokenizer
 
 
+def _total_parameters(model: nn.Module) -> int:
+    from mlx_lm.utils import get_total_parameters
+
+    return int(get_total_parameters(model))
+
+
 def save_adapter(model: nn.Module, target: Path, lora: dict[str, Any], spec: config.ModelSpec) -> None:
     target.mkdir(parents=True, exist_ok=True)
     weights = dict(tree_flatten(model.trainable_parameters()))
@@ -238,6 +244,8 @@ def session(
     )
     if resume_from is not None:
         model.load_weights(str(resume_from / "adapters.safetensors"), strict=False)
+    load_peak = mx.get_peak_memory() / 1e9
+    mx.reset_peak_memory()
 
     train_rows = load_samples(cfg, "train")
     train, dropped = tdata.encode_all(tokenizer, train_rows, max_len)
@@ -263,6 +271,9 @@ def session(
                 "lora": lora,
                 "device": mx.device_info().get("device_name"),
                 "memoryLimitGb": budget,
+                "loadPeakGb": round(load_peak, 3),
+                "weightsGb": round(mx.get_active_memory() / 1e9, 3),
+                "totalParameters": _total_parameters(model),
             },
         )
 

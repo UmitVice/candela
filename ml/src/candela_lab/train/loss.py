@@ -3,6 +3,7 @@ from typing import Any
 
 import mlx.core as mx
 from mlx import nn
+from mlx.utils import tree_flatten
 
 
 def to_float(a: mx.array) -> float:
@@ -37,6 +38,7 @@ def make_loss(model: nn.Module, chunk: int = 256) -> Callable[..., tuple[mx.arra
     body, head = body_and_head(model)
 
     def chunk_ce(h: mx.array, targets: mx.array) -> mx.array:
+        targets = mx.stop_gradient(targets)
         logits = head(h).astype(mx.float32)
         lse = mx.logsumexp(logits, axis=-1)
         picked = mx.take_along_axis(logits, targets[:, None], axis=-1)[:, 0]
@@ -62,7 +64,7 @@ def make_loss(model: nn.Module, chunk: int = 256) -> Callable[..., tuple[mx.arra
 
 
 def checkpoint_layers(model: nn.Module) -> None:
-    """Gradient checkpointing for decoder layers. Gemma 4 layers return (h, shared_kv, offset); without KV sharing
+    """Gradient checkpointing for adapted decoder layers. Gemma 4 layers return (h, shared_kv, offset); without KV sharing
     (num_kv_shared_layers == 0 in the 12B model) only h is used downstream, so only h crosses the checkpoint."""
     layers: Any = text_model(model).layers
     cls = type(layers[0])
@@ -71,17 +73,26 @@ def checkpoint_layers(model: nn.Module) -> None:
     fn = cls.__call__
 
     def wrapped(self: nn.Module, x: mx.array, *args: Any, **kwargs: Any) -> Any:
+        params = self.trainable_parameters()
+        if not tree_flatten(params):
+            # Frozen layers below the first adapted layer need no backward pass at all; mx.checkpoint would otherwise
+            # differentiate their inputs and backpropagate through every frozen layer down to the embedding.
+            out = fn(self, x, *args, **kwargs)
+            if isinstance(out, tuple):
+                return (mx.stop_gradient(out[0]), *out[1:])
+            return mx.stop_gradient(out)
+
         tuple_out: list[bool] = []
 
-        def inner(params: Any, x_: mx.array) -> mx.array:
-            self.update(params)
+        def inner(params_: Any, x_: mx.array) -> mx.array:
+            self.update(params_)
             out = fn(self, x_, *args, **kwargs)
             if isinstance(out, tuple):
                 tuple_out.append(True)
                 return out[0]
             return out
 
-        h = mx.checkpoint(inner)(self.trainable_parameters(), x)
+        h = mx.checkpoint(inner)(params, x)
         return (h, None, 0) if tuple_out else h
 
     cls.__call__ = wrapped

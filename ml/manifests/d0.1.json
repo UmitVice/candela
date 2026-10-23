@@ -1,0 +1,348 @@
+{
+  "version": "d0.1",
+  "createdAt": "2026-10-23T13:18:46+00:00",
+  "configHash": "d216f38fba5f5b80",
+  "config": "configs/data/d0.1.yaml",
+  "seed": 20261023,
+  "tokenizer": "gemma-4-12b-qat",
+  "maxTokens": 4096,
+  "sampleUnit": "one supervised assistant turn with its full prefix",
+  "sources": [
+    {
+      "id": "candela-traces",
+      "bucket": "candela_traces",
+      "license": "apache-2.0",
+      "origin": "data/traces/d0.1",
+      "files": [
+        {
+          "name": "ml/data/traces/d0.1/fake-7.jsonl",
+          "sha256": "198d550d9aa5806c59c9b3a731680a481beda012718d267291af07f4433eac24"
+        },
+        {
+          "name": "ml/data/traces/d0.1/gateway-200.jsonl",
+          "sha256": "bc179c3a9543e07ca42a155b7766c28d06f49c47e9c2ac52d4835c340232a050"
+        }
+      ],
+      "conversations": 2800,
+      "dropped": {
+        "exact_duplicate": 308
+      },
+      "kept": 2492,
+      "samplesAvailable": 6679,
+      "quota": 6000,
+      "selected": 6000,
+      "tooLong": 353
+    },
+    {
+      "id": "nemotron-agentic-finance",
+      "bucket": "agentic_finance",
+      "license": "openmdw-1.1",
+      "origin": "nvidia/Nemotron-SFT-Agentic-Finance-v1",
+      "files": [
+        {
+          "name": "hf-cache/13f0aa9f04af54af991b6c249585dc59c5047938/data/train.jsonl",
+          "sha256": "9f9d018aac68bb8c28ec650b2ae5a2617568cc4c86bcf1c672a7a77b37c4cb87"
+        }
+      ],
+      "conversations": 7878,
+      "dropped": {
+        "decontaminated": 43
+      },
+      "kept": 7835,
+      "samplesAvailable": 7835,
+      "quota": 1500,
+      "selected": 1500,
+      "tooLong": 1
+    },
+    {
+      "id": "toolace",
+      "bucket": "function_calling",
+      "license": "apache-2.0",
+      "origin": "Team-ACE/ToolACE",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/6bda777c88d21e5a204703c1ee45597a8fa4f734/data.json",
+          "sha256": "ba12c083fca7e8da48c67ad5b895e495447da7c66e39a2e19742c082e6cb537e"
+        }
+      ],
+      "conversations": 10749,
+      "dropped": {
+        "quality:empty_assistant": 5,
+        "quality:boilerplate_refusal": 2,
+        "exact_duplicate": 3
+      },
+      "kept": 10739,
+      "samplesAvailable": 13118,
+      "quota": 500,
+      "selected": 500,
+      "tooLong": 0
+    },
+    {
+      "id": "hermes-fc",
+      "bucket": "function_calling",
+      "license": "apache-2.0",
+      "origin": "NousResearch/hermes-function-calling-v1",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling-singleturn.json",
+          "sha256": "fb2df9fe3f295dfd65b223c2dbf04d6b90006357d737f8f8927749f0bea09527"
+        },
+        {
+          "name": "hf-cache/snapshots/dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling.json",
+          "sha256": "769478035a886678d525d057ea66e3fd1e247f43e35c8d6d7cc866e080b6742b"
+        }
+      ],
+      "conversations": 2027,
+      "dropped": {
+        "near_duplicate": 11
+      },
+      "kept": 2016,
+      "samplesAvailable": 2932,
+      "quota": 500,
+      "selected": 500,
+      "tooLong": 0
+    },
+    {
+      "id": "finqa",
+      "bucket": "numeric_reasoning",
+      "license": "mit",
+      "origin": {
+        "train": "https://raw.githubusercontent.com/czyssrs/FinQA/0f16e2867befa6840783e58be38c9efb9229d742/dataset/train.json"
+      },
+      "files": [
+        {
+          "name": "ml/data/raw/url/4efb5c19ec19f5b5/train.json",
+          "sha256": "49f237eb9779b569473b26b08048867d04635a7cc39ad6a7a5664c55bb428db6"
+        }
+      ],
+      "conversations": 6251,
+      "dropped": {
+        "decontaminated": 3734,
+        "exact_duplicate": 3,
+        "near_duplicate": 7
+      },
+      "kept": 2507,
+      "samplesAvailable": 2507,
+      "quota": 1000,
+      "selected": 1000,
+      "tooLong": 0
+    },
+    {
+      "id": "convfinqa",
+      "bucket": "numeric_reasoning",
+      "license": "mit",
+      "origin": {
+        "archive": "https://raw.githubusercontent.com/czyssrs/ConvFinQA/cf3eed2d5984960bf06bb8145bcea5e80b0222a6/data.zip"
+      },
+      "files": [
+        {
+          "name": "ml/data/raw/url/5318b3db7e570aab/data.zip",
+          "sha256": "d764271fae60d81b62e6d58dfc481807ebc8cfbcd633811241723c4a2101072a"
+        }
+      ],
+      "conversations": 3037,
+      "dropped": {
+        "decontaminated": 1864
+      },
+      "kept": 1173,
+      "samplesAvailable": 4250,
+      "quota": 750,
+      "selected": 750,
+      "tooLong": 0
+    },
+    {
+      "id": "tatqa",
+      "bucket": "numeric_reasoning",
+      "license": "cc-by-4.0",
+      "origin": "next-tat/TAT-QA",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/c96247f5077eac447f63527fd3dcfdc58bb56d6a/tatqa_dataset_train.json",
+          "sha256": "c7bf8eb0c757e57ef3db6c6146dd7e487100dac1e37e66a349813ddc4187cd65"
+        }
+      ],
+      "conversations": 13251,
+      "dropped": {
+        "decontaminated": 2777,
+        "exact_duplicate": 32,
+        "near_duplicate": 5
+      },
+      "kept": 10437,
+      "samplesAvailable": 10437,
+      "quota": 750,
+      "selected": 750,
+      "tooLong": 1
+    },
+    {
+      "id": "twitter-fin-sentiment",
+      "bucket": "classic_sentiment",
+      "license": "mit",
+      "origin": "zeroshot/twitter-financial-news-sentiment",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/ccbe24de388e287beb92dd393a335c376b350ac3/sent_train.csv",
+          "sha256": "71aa99d0d37feced03c999ec23b5b25302c92f39d69b6acb0a37aa076c5420e8"
+        }
+      ],
+      "conversations": 9543,
+      "dropped": {
+        "near_duplicate": 1,
+        "decontaminated": 1
+      },
+      "kept": 9541,
+      "samplesAvailable": 9541,
+      "quota": 400,
+      "selected": 400,
+      "tooLong": 0
+    },
+    {
+      "id": "twitter-fin-topic",
+      "bucket": "classic_headlines",
+      "license": "mit",
+      "origin": "zeroshot/twitter-financial-news-topic",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/acbc8af2a35ccf0916124efcbe9e6cf25f191012/topic_train.csv",
+          "sha256": "63b9ea8183728dd5ddc6a57289341556509ddc0a8d037616519319a316b54490"
+        }
+      ],
+      "conversations": 16990,
+      "dropped": {},
+      "kept": 16990,
+      "samplesAvailable": 16990,
+      "quota": 300,
+      "selected": 300,
+      "tooLong": 0
+    },
+    {
+      "id": "smoltalk",
+      "bucket": "general_retention",
+      "license": "apache-2.0",
+      "origin": "HuggingFaceTB/smoltalk",
+      "files": [
+        {
+          "name": "hf-cache/data/smol-constraints/train-00000-of-00001.parquet",
+          "sha256": "3369eaff911d3511ee21561a3b8607e1acfd773a6ade80f4759490ffdcce7ba4"
+        },
+        {
+          "name": "hf-cache/data/smol-rewrite/train-00000-of-00001.parquet",
+          "sha256": "12c7df2f0ec53fa35c329c1d10243cbb744bb04b6c52823db8e464835747ccba"
+        }
+      ],
+      "conversations": 87766,
+      "dropped": {
+        "decontaminated": 16346,
+        "exact_duplicate": 127,
+        "near_duplicate": 28,
+        "quality:repetition": 3,
+        "quality:non_english": 2
+      },
+      "kept": 71260,
+      "samplesAvailable": 71260,
+      "quota": 1000,
+      "selected": 1000,
+      "tooLong": 0
+    }
+  ],
+  "buckets": {
+    "candela_traces": {
+      "target": 6000,
+      "selected": 6000
+    },
+    "agentic_finance": {
+      "target": 1500,
+      "selected": 1500
+    },
+    "function_calling": {
+      "target": 1000,
+      "selected": 1000
+    },
+    "numeric_reasoning": {
+      "target": 2500,
+      "selected": 2500
+    },
+    "classic_sentiment": {
+      "target": 400,
+      "selected": 400
+    },
+    "classic_headlines": {
+      "target": 300,
+      "selected": 300
+    },
+    "general_retention": {
+      "target": 1000,
+      "selected": 1000
+    }
+  },
+  "splits": {
+    "train": {
+      "samples": 12208,
+      "conversations": 7960,
+      "sha256": "0ad3baf433a54cb2b4f5e7b8c707e85d3cdad41da87d75a7ba530dbf086448d2",
+      "tokens": {
+        "total": 15367735,
+        "mean": 1258.8,
+        "p50": 890,
+        "p95": 3478,
+        "max": 4096
+      }
+    },
+    "valid": {
+      "samples": 492,
+      "conversations": 325,
+      "sha256": "1221858be465478c5d686b13ae9fe40f0f7506127e6f2a16f24ee94a228750e2",
+      "tokens": {
+        "total": 589009,
+        "mean": 1197.2,
+        "p50": 882,
+        "p95": 3456,
+        "max": 4057
+      }
+    }
+  },
+  "licenses": {
+    "apache-2.0": 8000,
+    "mit": 2450,
+    "openmdw-1.1": 1500,
+    "cc-by-4.0": 750
+  },
+  "tasks": {
+    "tool_use": 6000,
+    "numeric_qa": 1750,
+    "agentic_finance": 1500,
+    "function_calling": 1000,
+    "general": 1000,
+    "numeric_qa_conversational": 750,
+    "sentiment": 400,
+    "headline_topic": 300
+  },
+  "pii": {
+    "email": 718,
+    "phone": 108,
+    "ip": 258,
+    "card": 1
+  },
+  "decontamination": {
+    "n": 13,
+    "evalTexts": {
+      "fpb": 970,
+      "fiqa_sa": 235,
+      "headlines": 20547,
+      "finqa": 1147,
+      "convfinqa": 1490,
+      "tatqa": 739,
+      "financebench": 150,
+      "ifeval": 541
+    },
+    "indexSize": 575411,
+    "hitsBySuite": {
+      "financebench": 41,
+      "finqa": 4229,
+      "tatqa": 2499,
+      "convfinqa": 1649,
+      "headlines": 1,
+      "ifeval": 16346
+    }
+  },
+  "buildSeconds": 3767.3
+}

@@ -4,18 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 step="${1:-all}"
 lab() { uv run --frozen lab "$@"; }
-peak() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['peak_mem_gb'])" "runs/$1/state.json"; }
 
 if [[ "$step" == all || "$step" == probes ]]; then
   lab train run configs/train/probe-l16.yaml --run-id probe-l16-2k --probe
   lab train run configs/train/probe-l24.yaml --run-id probe-l24-2k --probe
-  lab train run configs/train/probe-l16-4k.yaml --run-id probe-l16-4k --probe
-  if python3 -c "import sys; sys.exit(0 if float('$(peak probe-l16-4k)') <= 9.0 else 1)"; then
-    echo "4096 fits: pilot keeps maxSeqLength 4096"
-  else
-    sed -i '' 's/^maxSeqLength: 4096/maxSeqLength: 2048/' configs/train/pilot.yaml
-    echo "4096 exceeds 9 GB: pilot falls back to 2048"
-  fi
 fi
 if [[ "$step" == all || "$step" == baseline ]]; then
   lab eval run gemma-4-12b-qat --mode fast --label gemma-4-12b-qat-base

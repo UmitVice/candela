@@ -7,7 +7,7 @@ gradAccumulation: 1
 batchSize: 1
 maxSeqLength: 2048
 gradCheckpoint: true
-headChunk: 256
+headChunk: 64
 optimizer: {learningRate: 1.0e-4, warmup: 2, minLrRatio: 0.1, gradClip: 1.0}
-memory: {budgetGb: 9.0, cacheGb: 0.5}
+memory: {budgetGb: 10.5, cacheGb: 0.5}
 seed: 7
