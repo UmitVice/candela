@@ -1,0 +1,155 @@
+{
+  "label": "spark-35m-m1",
+  "run": "spark-35m-m1",
+  "checkpoint": "step-00004400",
+  "step": 4400,
+  "tokens": 144179200,
+  "evaluatedAt": "2026-10-23T10:19:14Z",
+  "validation": {
+    "perSource": {
+      "cosmopedia-v2": {
+        "bf16": 3.2586,
+        "int4": 3.2617,
+        "int4Export": 3.2619,
+        "pplBf16": 26.01,
+        "pplInt4": 26.09
+      },
+      "edgar": {
+        "bf16": 2.3583,
+        "int4": 2.3619,
+        "int4Export": 2.3619,
+        "pplBf16": 10.57,
+        "pplInt4": 10.61
+      },
+      "finemath": {
+        "bf16": 2.9665,
+        "int4": 2.9694,
+        "int4Export": 2.969,
+        "pplBf16": 19.42,
+        "pplInt4": 19.48
+      },
+      "fineweb-edu": {
+        "bf16": 3.7548,
+        "int4": 3.758,
+        "int4Export": 3.7579,
+        "pplBf16": 42.72,
+        "pplInt4": 42.86
+      },
+      "fineweb-edu-dedup": {
+        "bf16": 3.5944,
+        "int4": 3.5937,
+        "int4Export": 3.5937,
+        "pplBf16": 36.4,
+        "pplInt4": 36.37
+      },
+      "fineweb-edu-finance": {
+        "bf16": 3.4426,
+        "int4": 3.4453,
+        "int4Export": 3.4452,
+        "pplBf16": 31.27,
+        "pplInt4": 31.35
+      },
+      "wikipedia-en": {
+        "bf16": 3.4882,
+        "int4": 3.4936,
+        "int4Export": 3.4936,
+        "pplBf16": 32.73,
+        "pplInt4": 32.9
+      }
+    },
+    "meanBf16": 3.2662,
+    "meanInt4": 3.2691,
+    "gapRel": 0.00088,
+    "windowsPerSource": 64,
+    "seqLen": 1024
+  },
+  "zeroShot": [
+    {
+      "id": "lambada",
+      "metric": "acc",
+      "n": 500,
+      "value": 0.138,
+      "extra": {
+        "targetPerplexity": 85.55206713069411
+      },
+      "chance": 0.0
+    },
+    {
+      "id": "arc-easy",
+      "metric": "acc_norm",
+      "n": 500,
+      "value": 0.352,
+      "chance": 0.25
+    },
+    {
+      "id": "hellaswag",
+      "metric": "acc_norm",
+      "n": 500,
+      "value": 0.278,
+      "chance": 0.25
+    },
+    {
+      "id": "piqa",
+      "metric": "acc_norm",
+      "n": 500,
+      "value": 0.582,
+      "chance": 0.5
+    },
+    {
+      "id": "blimp",
+      "metric": "acc",
+      "n": 1000,
+      "value": 0.869,
+      "chance": 0.5
+    },
+    {
+      "id": "finance-cloze",
+      "metric": "acc",
+      "n": 24,
+      "value": 1.0,
+      "chance": 0.25
+    },
+    {
+      "id": "finance-cloze-hard",
+      "metric": "acc",
+      "n": 16,
+      "value": 0.8125,
+      "chance": 0.25
+    }
+  ],
+  "samples": [
+    {
+      "prompt": "The water cycle describes how",
+      "completion": " a person reacts with water to prevent an injury. It is usually a short walk or a short walk. The water cycle is a short walk or short walk and the water cycle is a short walk or short walk. It is usually done in the form of a stream or stream or stream. It can"
+    },
+    {
+      "prompt": "In the early nineteenth century, the city of London",
+      "completion": ", where many of the most famous writers and writers were from the English-speaking world, had quite a well-known and unique character. The earlier census, an annual census, was a large and complex affair with the great master of the English language. In the nineteenth century, the Roman Empire lost a significant"
+    },
+    {
+      "prompt": "Photosynthesis is the process by which",
+      "completion": " light forms, and the process is conducted to produce the desired effects, and, in some cases, the process is performed. The process is a process of photosynthesis and the process is performed by a photosynthesis process. The photosynthesis process is done by a photosynthesis process."
+    },
+    {
+      "prompt": "The company reported that revenue for the fiscal year",
+      "completion": " ended May 28, 2018, as a result of the COVID-19 pandemic, is expected to continue to be a new revenue source for fiscal year 2020. The Company\u2019s revenue for fiscal year 2020 was $189 million"
+    },
+    {
+      "prompt": "When the Federal Reserve raises interest rates,",
+      "completion": " the economy will have to be changed as the Federal Reserve needs to increase its assets. The financial sector is also affected by the federal government\u2019s initiatives, including investments in private and public funds, which are not the primary source of funding. The stock market is affected by the federal government\u2019s decision to increase"
+    },
+    {
+      "prompt": "Risk factors that could affect our business include",
+      "completion": ": credit card, credit card market, disability, community, community, and many others. People with that risk can be affected by a variety of factors, including the nature of their financial situation, the financial condition of the individual, and the likelihood that they will receive the financial, credit, or financial"
+    },
+    {
+      "prompt": "A bond is a debt security in which",
+      "completion": " an employee\u2019s bond is made up of two or more fibers or fibers. The bond is generally made up of two or more fibers, or fibers. The bond\u2019s bond\u2019s bond\u2019s bond size is usually small and has a lower resistance to blockage. This makes it difficult for a person to buy"
+    },
+    {
+      "prompt": "Inflation is measured by",
+      "completion": " measuring the quantity of goods and services a business has. It is measured by measuring the quantity of goods and services a business has. It is measured by measuring the quantity of goods and services a business has.\nThe rate of inflation is calculated by measuring the quantity of goods and services a business has.\nThe"
+    }
+  ],
+  "sec": 83.2
+}

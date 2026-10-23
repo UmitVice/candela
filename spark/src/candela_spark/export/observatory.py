@@ -221,7 +221,7 @@ def export(run: str, milestone: str) -> dict[str, Any]:
                 "huggingFace": "UmitVice/candela-spark-35m",
             }
         ],
-        "liveStatus": "~/.candela/spark/status.json (served by the gateway; schema candela.spark.status.v1)",
+        "liveStatus": {"schema": "candela.spark.status.v1", "servedBy": "gateway"},
     }
     _write(out_dir / "manifest.json", manifest)
     sizes = {str(p.relative_to(out_dir)): p.stat().st_size for p in out_dir.rglob("*.json")}

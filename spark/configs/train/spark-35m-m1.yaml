@@ -8,6 +8,7 @@ accum: 16
 seed: 1234
 warmup_steps: 300
 fork_from: spark-35m-main
+fork_step: 3600
 decay_steps: 800
 eval_every: 200
 eval_windows_per_source: 16
