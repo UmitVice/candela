@@ -20,12 +20,14 @@ The owner asked for an 8–12B open model "like Qwen3.8 8B or Gemma 4 12B", trai
 
 ## Probe (filled in by `p1-ml`)
 
+Measured by `p1-ml` on 2026-10-23 (Apple M5 Pro, 24 GB, mlx 0.32.4 / mlx-lm 0.32.2): 20 optimizer steps (batch 1, no accumulation) on the 400 longest `d0.1` samples that fit 2 048 tokens, gradient checkpointing on adapted layers, frozen layers without backward, supervised-positions-only LM head in 64-position chunks. The frozen QAT int4 base alone occupies 7.44 GB (11.9 B parameters).
+
 | Setting | Peak memory @2048 | Tokens/s | Tool-call parsing | Notes |
 |---|---|---|---|---|
-| LoRA rank 16, top 16 layers | | | | |
-| LoRA rank 16, top 24 layers | | | | |
+| LoRA rank 16, top 16 layers (32–47, 21.9 M trainable) | 10.46 GB | 332 | 3 687 / 3 687 tool-call turns render and parse back exactly (Gemma 4 template + mlx-lm `gemma4` parser) | single-step peaks: 9.45 GB @1 024, 12.50 GB @4 096 |
+| LoRA rank 16, top 24 layers (24–47, 32.8 M trainable) | 10.77 GB | 271 | same template | single-step peak 13.04 GB @4 096 |
 
-Choose the widest configuration whose peak stays ≤ 9 GB.
+No configuration that trains on realistic sequence lengths stays ≤ 9 GB: the frozen base already takes 7.44 GB and activation memory (attention backward) grows with sequence length, not with the number of supervised positions. **Chosen: rank 16 on the top 16 layers at `max_seq_length` 2 048 with a 10.5 GB training budget**, started only when ≥ 13.5 GB is available (budget + 3 GB). The 24-layer variant costs only +0.3 GB but ~18 % throughput; `p2-train` may widen it. 4 096-token training (≥ 12.5 GB) is too heavy for the shared machine; see ADR 0400.
 
 ## Consequences
 

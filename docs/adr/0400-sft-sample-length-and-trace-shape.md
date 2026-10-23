@@ -11,7 +11,8 @@ The master plan caps supervised samples at 2 048 tokens. Measured with the Gemma
 
 - Dataset `d0.1` keeps samples up to **4 096 tokens** (`maxTokens: 4096` in `ml/configs/data/d0.1.yaml`); training uses `maxSeqLength: 4096` when the probe shows the peak stays ≤ 9 GB, otherwise 2 048 with a note in ADR 0003.
 - Analysis and comparison traces call `get_fundamentals` with `limit: 2` (the composer only uses the newest period and the ratios), which the tool schema allows and which a well-behaved model should also prefer.
-- The 2 048-token probes required by the brief still run, plus one probe at 4 096, so both numbers are on record.
+- The 2 048-token probes required by the brief still run, plus one single-step measurement at 4 096, so both numbers are on record.
+- **Outcome (probe, ADR 0003):** 4 096 tokens peaks at 12.5 GB with LoRA on 16 layers, too heavy for the shared machine, so the `p1-ml` pilot trains at 2 048 and drops longer samples at encode time. The dataset keeps the 4 096 cap so `p2-train` can choose 2 048 or 3 072 (≈ 11 GB, untested) without rebuilding; at 2 048 the final answers of full analyses (≈ 4 000 tokens) are not trained, while their tool-call turns are.
 
 ## Consequences
 
