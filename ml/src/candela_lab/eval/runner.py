@@ -268,8 +268,9 @@ def run(
     guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb)
     _neighbourly_wired_limit()
     started = time.time()
-    guard.wait_for_headroom(what=f"eval {spec.id}")
-    with gpu_lease.Lease("lab-eval", purpose=f"eval {label or spec.id}") as lease:
+    with gpu_lease.Lease("lab-eval", purpose=f"eval {label or spec.id}", state="waiting") as lease:
+        guard.wait_for_headroom(what=f"eval {spec.id}")
+        lease.activate()
         resources.apply_process_limits(spec.inference_budget_gb, cache_gb=1.0)
         mx.reset_peak_memory()
         loaded = load(spec.base_path(), adapter_path=str(adapter) if adapter else None)

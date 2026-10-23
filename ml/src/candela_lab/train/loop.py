@@ -416,9 +416,12 @@ def run(
     guard.install_signal_handler()
     guard.simulate_pause_at(simulate_pause_at or [])
     holder = "lab-train"
-    guard.wait_for_headroom(what=f"train {run_id}")
     try:
-        with gpu_lease.Lease(holder, purpose=f"{'probe' if probe else 'train'} {run_id}") as lease:
+        with gpu_lease.Lease(
+            holder, purpose=f"{'probe' if probe else 'train'} {run_id}", state="waiting"
+        ) as lease:
+            guard.wait_for_headroom(what=f"train {run_id}")
+            lease.activate()
             resume = latest_checkpoint(rd) if state.step > 0 else None
             while True:
                 paused: tuple[int, str] | None = None

@@ -120,6 +120,7 @@ def foreign_training() -> list[tuple[int, str]]:
     extra = os.environ.get("CANDELA_FOREIGN_TRAINING_RE")
     pattern = re.compile(extra) if extra else FOREIGN_TRAINING_RE
     me = os.getpid()
+    repo = str(Path(__file__).resolve().parents[3])
     found = []
     for proc in psutil.process_iter(["pid", "cmdline"]):
         try:
@@ -130,6 +131,11 @@ def foreign_training() -> list[tuple[int, str]]:
             continue
         if "candela/spark" in cmd or "candela_lab" in cmd or "lab train" in cmd:
             continue
+        try:
+            if proc.cwd().startswith(repo):
+                continue
+        except psutil.Error:
+            pass
         if pattern.search(cmd):
             found.append((int(proc.info["pid"]), cmd[:120]))
     return found

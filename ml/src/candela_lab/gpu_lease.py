@@ -93,10 +93,11 @@ def live_leases() -> list[LeaseInfo]:
 class Lease:
     """Holds `~/.candela/leases/<holder>.json` with a 10 s heartbeat and yields to higher priorities at boundaries."""
 
-    def __init__(self, holder: str, purpose: str, priority: int | None = None) -> None:
+    def __init__(self, holder: str, purpose: str, priority: int | None = None, state: str = "active") -> None:
         self.holder = holder
         self.priority = PRIORITIES[holder] if priority is None else priority
         self.purpose = purpose
+        self.state = state
         self.path = LEASE_DIR / f"{holder}.json"
         self.started_at = _now()
         self._stop = threading.Event()
@@ -112,6 +113,7 @@ class Lease:
             "pid": os.getpid(),
             "priority": self.priority,
             "purpose": self.purpose,
+            "state": self.state,
             "startedAt": self.started_at,
             "heartbeatAt": _now(),
         }
@@ -140,8 +142,18 @@ class Lease:
             for sig in (signal.SIGTERM, signal.SIGINT):
                 self._prev_handlers[sig] = signal.getsignal(sig)
                 signal.signal(sig, self._on_signal)
-        _log.info("lease acquired", holder=self.holder, priority=self.priority, path=str(self.path))
+        _log.info(
+            "lease written", holder=self.holder, priority=self.priority, state=self.state, path=str(self.path)
+        )
         return self
+
+    def activate(self) -> None:
+        """Reservation (rule 7–9): the lease is written as `waiting` before the memory check so lower priorities
+        release their memory; it switches to `active` once the check passes."""
+        if self.state != "active":
+            self.state = "active"
+            self._write()
+            _log.info("lease active", holder=self.holder, priority=self.priority)
 
     def release(self) -> None:
         self._stop.set()
