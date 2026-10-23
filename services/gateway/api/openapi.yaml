@@ -1,0 +1,494 @@
+openapi: 3.1.0
+info:
+  title: Candela Gateway API
+  version: 1.0.0
+  summary: Public API of the Candela gateway (contracts/api.md is the source of truth).
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: http://127.0.0.1:8710
+    description: Local development
+tags:
+  - name: system
+  - name: chat
+  - name: market
+  - name: feedback
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: Liveness
+      responses:
+        "200":
+          description: Alive
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { const: ok } } }
+  /readyz:
+    get:
+      tags: [system]
+      summary: Readiness (storage open, a model route available, not draining)
+      responses:
+        "200": { description: Ready }
+        "503": { description: Not ready }
+  /api/v1/status:
+    get:
+      tags: [system]
+      summary: Gateway, routing, worker, queue and data provider status
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StatusResponse" }
+  /api/v1/models:
+    get:
+      tags: [system]
+      summary: Known models and their availability
+      responses:
+        "200":
+          description: Models
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [models]
+                properties:
+                  models:
+                    type: array
+                    items: { $ref: "#/components/schemas/AvailableModel" }
+  /api/v1/chat/stream:
+    post:
+      tags: [chat]
+      summary: Stream a chat answer as Server-Sent Events
+      description: >
+        Frames carry `id: <seq>`, `event: <type>` and `data: <json>`; `: keep-alive` comments every 15 s.
+        Event order: meta → queue* → (reasoning | token | tool_call | tool_result | telemetry)* → usage → done, or error (terminal).
+        A second `meta` event is sent if a worker fails before the first token and the request is retried on the fallback.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatRequest" }
+      responses:
+        "200":
+          description: Event stream
+          headers:
+            RateLimit-Limit: { $ref: "#/components/headers/RateLimitLimit" }
+            RateLimit-Remaining: { $ref: "#/components/headers/RateLimitRemaining" }
+            RateLimit-Reset: { $ref: "#/components/headers/RateLimitReset" }
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/chat/ws:
+    get:
+      tags: [chat]
+      summary: Chat over WebSocket (subprotocol candela.chat.v1)
+      description: >
+        Client sends `{ "type": "start", "request": ChatRequest }` within 10 s and may send `{ "type": "cancel" }`.
+        Server sends `{ "type": "event", "id": <seq>, "event": <name>, "data": {…} }` and closes with 1000 after done or error.
+        Protocol violations close with 1008.
+      responses:
+        "101": { description: Switching protocols }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/market/search:
+    get:
+      tags: [market]
+      summary: Search the symbol directory
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 64 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 10 } }
+      responses:
+        "200":
+          description: Results ranked by exact ticker, ticker prefix, then name tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/SymbolInfo" }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/market/{symbol}/quote:
+    get:
+      tags: [market]
+      parameters: [{ $ref: "#/components/parameters/Symbol" }]
+      responses:
+        "200":
+          description: Latest end-of-day quote
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/market/{symbol}/history:
+    get:
+      tags: [market]
+      parameters:
+        - { $ref: "#/components/parameters/Symbol" }
+        - { name: range, in: query, schema: { type: string, enum: [1M, 3M, 6M, 1Y, 2Y, 5Y], default: 1Y } }
+      responses:
+        "200":
+          description: Daily bars
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PriceHistory" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/market/{symbol}/indicators:
+    get:
+      tags: [market]
+      parameters:
+        - { $ref: "#/components/parameters/Symbol" }
+        - { name: range, in: query, schema: { type: string, enum: [6M, 1Y, 2Y], default: 1Y } }
+      responses:
+        "200":
+          description: Indicator series and signals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IndicatorSet" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/market/{symbol}/fundamentals:
+    get:
+      tags: [market]
+      parameters:
+        - { $ref: "#/components/parameters/Symbol" }
+        - { name: period, in: query, schema: { type: string, enum: [annual, quarterly], default: annual } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 8, default: 4 } }
+      responses:
+        "200":
+          description: Reported financial statements, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Fundamentals" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/market/{symbol}/forecast:
+    get:
+      tags: [market]
+      parameters: [{ $ref: "#/components/parameters/Symbol" }]
+      responses:
+        "200":
+          description: Probabilistic price bands
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Forecast" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/feedback:
+    post:
+      tags: [feedback]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeedbackRequest" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { type: object, properties: { accepted: { const: true } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+components:
+  parameters:
+    Symbol:
+      name: symbol
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Z][A-Z0-9.\\-]{0,9}$" }
+  headers:
+    RateLimitLimit: { schema: { type: integer }, description: Requests per minute for this bucket }
+    RateLimitRemaining: { schema: { type: integer } }
+    RateLimitReset: { schema: { type: integer }, description: Seconds until the bucket refills }
+    RetryAfter: { schema: { type: integer }, description: Seconds to wait }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+        RateLimit-Limit: { $ref: "#/components/headers/RateLimitLimit" }
+        RateLimit-Remaining: { $ref: "#/components/headers/RateLimitRemaining" }
+        RateLimit-Reset: { $ref: "#/components/headers/RateLimitReset" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    ErrorCode:
+      type: string
+      enum: [invalid_request, not_found, rate_limited, overloaded, upstream_unavailable, upstream_timeout, data_unavailable, unauthorized, internal]
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { $ref: "#/components/schemas/ErrorCode" }
+            message: { type: string }
+            requestId: { type: string }
+            retryAfterMs: { type: number }
+    ModelInfo:
+      type: object
+      required: [id, displayName, tier, version, baseModel, runtime, host, quantization, contextLength, supportsReasoning, supportsTools, supportsTelemetry]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        tier: { type: string, enum: [pro, lite] }
+        version: { type: string }
+        baseModel: { type: string }
+        runtime: { type: string, enum: [mlx, llama.cpp] }
+        host: { type: string, enum: [local-gpu-worker, cloud-cpu] }
+        quantization: { type: string }
+        contextLength: { type: integer }
+        supportsReasoning: { type: boolean }
+        supportsTools: { type: boolean }
+        supportsTelemetry: { type: boolean }
+        architecture:
+          type: object
+          properties:
+            layers: { type: integer }
+            hiddenSize: { type: integer }
+            attentionHeads: { type: integer }
+            kvHeads: { type: integer }
+            vocabSize: { type: integer }
+            parameters: { type: string }
+    AvailableModel:
+      allOf:
+        - { $ref: "#/components/schemas/ModelInfo" }
+        - type: object
+          required: [available]
+          properties: { available: { type: boolean } }
+    StatusResponse:
+      type: object
+      required: [status, version, commit, route, models, workers, queue, dataProviders, time]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        version: { type: string }
+        commit: { type: string }
+        route: { type: string, enum: [worker, fallback, unavailable] }
+        models: { type: array, items: { $ref: "#/components/schemas/AvailableModel" } }
+        workers:
+          type: array
+          items:
+            type: object
+            required: [id, modelId, state, connectedAt]
+            properties:
+              id: { type: string }
+              modelId: { type: string }
+              state: { type: string, enum: [idle, busy, draining] }
+              connectedAt: { type: string, format: date-time }
+              device: { type: string }
+        queue:
+          type: object
+          required: [depth, maxDepth]
+          properties: { depth: { type: integer }, maxDepth: { type: integer } }
+        dataProviders:
+          type: array
+          items:
+            type: object
+            required: [id, status]
+            properties:
+              id: { type: string, enum: [snapshot, live-prices, sec, baseline-forecast, vaniras] }
+              status: { type: string, enum: [ok, degraded, disabled] }
+              asOf: { type: string }
+        time: { type: string, format: date-time }
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string, minLength: 1, maxLength: 8000 }
+    ChatRequest:
+      type: object
+      required: [conversationId, messages]
+      properties:
+        conversationId: { type: string, format: uuid }
+        messages: { type: array, minItems: 1, maxItems: 40, items: { $ref: "#/components/schemas/ChatMessage" } }
+        model: { type: string, default: auto }
+        options:
+          type: object
+          properties:
+            reasoning: { type: boolean, default: true }
+            telemetry: { type: boolean, default: false }
+            temperature: { type: number, minimum: 0, maximum: 1.2, default: 0.6 }
+            maxTokens: { type: integer, minimum: 64, maximum: 2048, default: 1024 }
+    SymbolInfo:
+      type: object
+      required: [symbol, name, exchange]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        exchange: { type: string }
+    Quote:
+      type: object
+      required: [symbol, name, exchange, currency, asOf, close, previousClose, change, changePct, open, high, low, volume, fiftyTwoWeekHigh, fiftyTwoWeekLow, avgVolume30d, source, delayed]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        exchange: { type: string }
+        currency: { const: USD }
+        asOf: { type: string, format: date }
+        close: { type: number }
+        previousClose: { type: number }
+        change: { type: number }
+        changePct: { type: number }
+        open: { type: number }
+        high: { type: number }
+        low: { type: number }
+        volume: { type: number }
+        fiftyTwoWeekHigh: { type: number }
+        fiftyTwoWeekLow: { type: number }
+        avgVolume30d: { type: number }
+        source: { type: string, enum: [snapshot, live, vaniras] }
+        delayed: { type: boolean }
+    Bar:
+      type: object
+      required: [t, o, h, l, c, v]
+      properties:
+        t: { type: string, format: date }
+        o: { type: number }
+        h: { type: number }
+        l: { type: number }
+        c: { type: number }
+        v: { type: number }
+    PriceHistory:
+      type: object
+      required: [symbol, range, interval, bars, source, asOf]
+      properties:
+        symbol: { type: string }
+        range: { type: string }
+        interval: { const: 1d }
+        bars: { type: array, items: { $ref: "#/components/schemas/Bar" } }
+        source: { type: string }
+        asOf: { type: string, format: date }
+    IndicatorPoint:
+      type: object
+      required: [t]
+      properties:
+        t: { type: string, format: date }
+        sma20: { type: number }
+        sma50: { type: number }
+        sma200: { type: number }
+        ema12: { type: number }
+        ema26: { type: number }
+        rsi14: { type: number }
+        macd: { type: number }
+        macdSignal: { type: number }
+        macdHist: { type: number }
+        bbUpper: { type: number }
+        bbMiddle: { type: number }
+        bbLower: { type: number }
+        atr14: { type: number }
+    Signal:
+      type: object
+      required: [id, label, tone, detail]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        tone: { type: string, enum: [bullish, bearish, neutral] }
+        detail: { type: string }
+    IndicatorSet:
+      type: object
+      required: [symbol, range, asOf, latest, series, signals]
+      properties:
+        symbol: { type: string }
+        range: { type: string }
+        asOf: { type: string, format: date }
+        latest:
+          allOf:
+            - { $ref: "#/components/schemas/IndicatorPoint" }
+            - { type: object, required: [close], properties: { close: { type: number } } }
+        series: { type: array, items: { $ref: "#/components/schemas/IndicatorPoint" } }
+        signals: { type: array, items: { $ref: "#/components/schemas/Signal" } }
+    FundamentalPeriod:
+      type: object
+      required: [fiscalYear, fiscalPeriod, periodEnd]
+      properties:
+        fiscalYear: { type: integer }
+        fiscalPeriod: { type: string, enum: [FY, Q1, Q2, Q3, Q4] }
+        periodEnd: { type: string, format: date }
+        revenue: { type: number }
+        grossProfit: { type: number }
+        operatingIncome: { type: number }
+        netIncome: { type: number }
+        epsDiluted: { type: number }
+        operatingCashFlow: { type: number }
+        capitalExpenditure: { type: number }
+        freeCashFlow: { type: number }
+        totalAssets: { type: number }
+        totalLiabilities: { type: number }
+        cashAndEquivalents: { type: number }
+        longTermDebt: { type: number }
+        sharesOutstanding: { type: number }
+    Fundamentals:
+      type: object
+      required: [symbol, name, period, currency, periods, ratios, source, asOf]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        period: { type: string, enum: [annual, quarterly] }
+        currency: { const: USD }
+        periods: { type: array, items: { $ref: "#/components/schemas/FundamentalPeriod" } }
+        ratios:
+          type: object
+          properties:
+            grossMarginPct: { type: number }
+            operatingMarginPct: { type: number }
+            netMarginPct: { type: number }
+            fcfMarginPct: { type: number }
+            revenueGrowthPct: { type: number }
+            epsGrowthPct: { type: number }
+            debtToAssets: { type: number }
+        source: { type: string, enum: [sec, vaniras] }
+        asOf: { type: string, format: date }
+    Forecast:
+      type: object
+      required: [symbol, asOf, basePrice, source, method, horizons, disclaimer]
+      properties:
+        symbol: { type: string }
+        asOf: { type: string, format: date }
+        basePrice: { type: number }
+        source: { type: string, enum: [vaniras, baseline] }
+        method: { type: string }
+        horizons:
+          type: array
+          items:
+            type: object
+            required: [months, targetDate, p10, p50, p90]
+            properties:
+              months: { type: integer, enum: [3, 6, 9, 12] }
+              targetDate: { type: string, format: date }
+              p10: { type: number }
+              p50: { type: number }
+              p90: { type: number }
+        disclaimer: { type: string }
+    FeedbackRequest:
+      type: object
+      required: [conversationId, messageId, rating, consentToStore]
+      properties:
+        conversationId: { type: string, format: uuid }
+        messageId: { type: string }
+        rating: { type: integer, enum: [1, -1] }
+        reason: { type: string, maxLength: 500 }
+        consentToStore: { type: boolean }
+        transcript: { type: array, maxItems: 40, items: { $ref: "#/components/schemas/ChatMessage" } }
