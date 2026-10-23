@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.angular/
+pnpm-lock.yaml
+public/observatory/
+public/icons/
