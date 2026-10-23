@@ -1,0 +1,50 @@
+[project]
+name = "candela-spark"
+version = "0.1.0"
+description = "Candela Spark: a from-scratch, quantization-aware decoder family in pure MLX"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "mlx==0.32.4",
+  "tokenizers==0.23.3",
+  "huggingface_hub==2.2.0",
+  "numpy==2.5.4",
+  "pyarrow==26.0.0",
+  "xxhash==4.0.2",
+  "gguf==0.19.0",
+  "typer==0.27.3",
+  "psutil==7.2.2",
+  "pyyaml==6.0.3",
+  "rich==15.0.0",
+]
+
+[dependency-groups]
+dev = ["ruff==0.17.2", "pyright==1.1.414", "pip-audit>=2.9", "types-pyyaml", "types-psutil"]
+
+[project.scripts]
+spark = "candela_spark.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL"]
+ignore = ["RUF001", "RUF002", "RUF003", "PLR0402", "PLR0913", "PLR0917", "PLW0603", "PLR2004", "PLR0912", "PLR0915", "PLR0911", "PLC0415"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+reportMissingTypeStubs = false
+reportMissingModuleSource = false
+
+[tool.ruff.lint.per-file-ignores]
+"src/candela_spark/export/publish.py" = ["E501"]

@@ -1,0 +1,70 @@
+version: v0
+seed: 20261023
+validation_docs_per_source: 2000
+sources:
+  - id: fineweb-edu-dedup
+    repo: HuggingFaceTB/smollm-corpus
+    revision: 3ba9d605774198c5868892d7a8deda78031a781f
+    license: odc-by
+    format: parquet
+    text_field: text
+    kind: general
+    files:
+      - fineweb-edu-dedup/train-00000-of-00234.parquet
+  - id: fineweb-edu
+    repo: HuggingFaceFW/fineweb-edu
+    revision: 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9
+    license: odc-by
+    format: parquet
+    text_field: text
+    kind: general
+    finance_split: true
+    files:
+      - data/CC-MAIN-2024-51/000_00000.parquet
+      - data/CC-MAIN-2024-51/000_00001.parquet
+  - id: cosmopedia-v2
+    repo: HuggingFaceTB/smollm-corpus
+    revision: 3ba9d605774198c5868892d7a8deda78031a781f
+    license: odc-by
+    format: parquet
+    text_field: text
+    kind: general
+    files:
+      - cosmopedia-v2/train-00000-of-00104.parquet
+  - id: wikipedia-en
+    repo: wikimedia/wikipedia
+    revision: b04c8d1ceb2f5cd4588862100d08de323dccfbaa
+    license: cc-by-sa-3.0
+    format: parquet
+    text_field: text
+    kind: general
+    files:
+      - 20231101.en/train-00000-of-00041.parquet
+      - 20231101.en/train-00001-of-00041.parquet
+  - id: finemath
+    repo: HuggingFaceTB/finemath
+    revision: e92b25a616738fe95dc186b64dfb19f9c8525594
+    license: odc-by
+    format: parquet
+    text_field: text
+    kind: general
+    files:
+      - finemath-4plus/train-00000-of-00064.parquet
+  - id: edgar
+    repo: eloukas/edgar-corpus
+    revision: 7e90f0f342569b35213445f809cfaf3b91f9964f
+    license: apache-2.0
+    format: jsonl
+    text_fields: [section_1, section_1A, section_7]
+    kind: finance
+    files:
+      - 2019/train.jsonl
+      - 2020/train.jsonl
+mixture:
+  fineweb-edu-dedup: 1.0
+  fineweb-edu: 1.0
+  fineweb-edu-finance: 3.0
+  cosmopedia-v2: 1.0
+  wikipedia-en: 1.0
+  finemath: 1.0
+  edgar: 1.0

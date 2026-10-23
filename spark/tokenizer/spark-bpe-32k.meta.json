@@ -1,0 +1,10 @@
+{
+  "vocabSize": 32768,
+  "sha256": "cd803bdf515249f10c6cc2c24e1ea84241a56ea71a6d3c031010e969eeee6b3d",
+  "specialTokens": 128,
+  "bos": 1,
+  "eos": 2,
+  "pad": 0,
+  "pretokenizer": "qwen2-regex+bytelevel",
+  "ggufPre": "qwen2"
+}

@@ -1,0 +1,38 @@
+# Zero-shot evaluation sets (evaluation only, never trained on). Pinned to commits; parquet only.
+suites:
+  - id: lambada
+    repo: EleutherAI/lambada_openai
+    revision: 900124bf3b8235c6daf21033af9948b3f07346c4
+    license: mit
+    files: [default/test/default.parquet]
+  - id: arc-easy
+    repo: allenai/ai2_arc
+    revision: 210d026faf9955653af8916fad021475a3f00453
+    license: cc-by-sa-4.0
+    files: [ARC-Easy/test-00000-of-00001.parquet]
+  - id: hellaswag
+    repo: Rowan/hellaswag
+    revision: 218ec52e09a7e7462a5400043bb9a69a41d06b76
+    license: mit
+    files: [data/validation-00000-of-00001.parquet]
+  - id: piqa
+    # Hub-generated parquet conversion (refs/convert/parquet) of the original release; no loading script runs.
+    repo: ybisk/piqa
+    revision: 142c51238b3ca2bc61e9a075913871b8b600e8e1
+    license: afl-3.0
+    files: [plain_text/validation/0000.parquet]
+  - id: blimp
+    repo: nyu-mll/blimp
+    revision: 877fba0801ffb7cbd8c39c1ff314a46f053f6036
+    license: cc-by-4.0
+    files:
+      - anaphor_number_agreement/train-00000-of-00001.parquet
+      - determiner_noun_agreement_1/train-00000-of-00001.parquet
+      - regular_plural_subject_verb_agreement_1/train-00000-of-00001.parquet
+      - irregular_past_participle_verbs/train-00000-of-00001.parquet
+      - existential_there_quantifiers_1/train-00000-of-00001.parquet
+      - wh_questions_object_gap/train-00000-of-00001.parquet
+      - passive_1/train-00000-of-00001.parquet
+      - principle_A_case_1/train-00000-of-00001.parquet
+      - superlative_quantifiers_1/train-00000-of-00001.parquet
+      - transitive/train-00000-of-00001.parquet

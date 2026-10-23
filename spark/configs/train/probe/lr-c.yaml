@@ -1,0 +1,14 @@
+# Three-point learning-rate probe for the μP base width (ADR 0600).
+run_id: probe-lr-c
+preset: spark-35m
+micro_batch: 2
+accum: 16
+warmup_steps: 60
+max_steps: 250
+eval_every: 250
+eval_windows_per_source: 8
+checkpoint_every_sec: 100000
+lease_priority: 70
+optim:
+  muon_lr: 0.04
+  adam_lr: 0.004

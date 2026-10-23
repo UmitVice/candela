@@ -1,0 +1,20 @@
+# Milestone-1 release branch: forks a stable checkpoint of the main run and decays with 1-sqrt to zero.
+run_id: spark-35m-m1
+preset: spark-35m
+data_version: v0
+seq_len: 1024
+micro_batch: 2
+accum: 16
+seed: 1234
+warmup_steps: 300
+fork_from: spark-35m-main
+decay_steps: 800
+eval_every: 200
+eval_windows_per_source: 16
+checkpoint_every_sec: 600
+lease_holder: spark-milestone
+lease_priority: 70
+memory_budget_gb: 4.0
+optim:
+  muon_lr: 0.02
+  adam_lr: 0.002
