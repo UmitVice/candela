@@ -24,7 +24,7 @@ You are a phase engineer started by the **Director** session. The owner is away 
 7. Be a good neighbour on a shared 24 GB laptop (see Resource budget).
 8. Production quality: typed, structured logging, graceful shutdown, timeouts, input validation, accessible UI, responsive layouts.
 9. **No GitHub Actions or any hosted CI** (owner's quota). Quality gates run locally: `make <area>-check` (format, lint, type-check, build) must pass before every push.
-10. **Deploy sparingly** (owner's Netlify credits): production deploys only at the milestones your brief names (at most one per phase), always uploading a locally built `dist` with the Netlify CLI; never trigger Netlify-side builds; verify locally first (`make web-preview`). Treat Hugging Face Space rebuilds the same way.
+10. **Deploy sparingly** (owner's Netlify credits): production deploys only at the milestones your brief names (at most one per phase), always uploading a locally built `dist` with the Netlify CLI; never trigger Netlify-side builds; verify locally first (`make web-preview`). Always pass `--no-build` (netlify-cli 27 builds by default).
 
 ## Git in a shared checkout
 
@@ -44,7 +44,7 @@ Several phase sessions may work in this checkout at the same time, each in its o
 | `services/gateway` | Go API gateway: chat streaming, tool loop, market data, worker hub | gateway |
 | `services/worker` | Python MLX inference worker (dials out to the gateway) | worker |
 | `ml` | Candela Lab: data, training, evaluation, export, publishing; `ml/nano` holds Candela-Nano (from-scratch model) | ml |
-| `deploy` | Hugging Face Space and Netlify deployment assets | deploy |
+| `deploy` | Live setup on the Mac (supervisor, tunnel, endpoint discovery), Netlify rendering, recordings | deploy |
 | `contracts` | Shared API, protocol, tool and artifact contracts | Director |
 | `docs` | Plans, ADRs, status reports | all (own files) |
 
@@ -68,7 +68,7 @@ Verified on 2026-10-23. Pin exact versions in manifests and commit every lockfil
 | ML | mlx 0.32.4, mlx-lm 0.32.2, transformers 5.20.2, datasets 5.1.0, huggingface_hub 2.2.0, tokenizers 0.23.3, sentencepiece 0.2.2, gguf 0.19.0, numpy 2.5.4, pandas 3.1.0, scikit-learn 1.9.1 | torch 2.14.1 only if a step truly needs it |
 | Serving | fastapi 0.161.1, uvicorn 0.54.0, pydantic 2.14.1 | |
 | llama.cpp | local `llama-server` (Homebrew build 9960) for the dev lite model; containers pin a `ghcr.io/ggml-org/llama.cpp` server tag | |
-| Containers | `golang:1.27.3-trixie`, `python:3.14.9-slim-trixie` | Docker is not installed locally; images build on Hugging Face |
+| Containers | `golang:1.27.3-trixie`, `python:3.14.9-slim-trixie` | Docker is not installed locally; Dockerfiles exist for portability and stay correct by inspection |
 | Tooling | gitleaks 8.30.1, netlify-cli 27.14.2 (via `pnpm --package=netlify-cli@27.14.2 dlx netlify`) | |
 
 ## Local ports
@@ -97,8 +97,8 @@ Do not use, stop or reconfigure anything you did not start, especially the owner
 ## Accounts already authenticated on this machine
 
 - GitHub CLI `gh` as `UmitVice` — repo `UmitVice/candela` (public).
-- Hugging Face CLI `hf` as `UmitVice` — models, datasets and the Space live under this namespace.
-- Netlify CLI (run as `pnpm --package=netlify-cli@27.14.2 dlx netlify …`) — site `candela-terminal`, id `29663355-ecbd-43e8-8b32-9fade3ae572b`, https://candela-terminal.netlify.app.
+- Hugging Face CLI `hf` as `UmitVice` — models and datasets are published under this namespace. Do not create Spaces (Docker Spaces need PRO) and never touch the owner's existing Space `UmitVice/universal-runtime`.
+- Netlify CLI (run as `pnpm --package=netlify-cli@27.14.2 dlx netlify deploy --prod --no-build --dir <dist> --site 29663355-ecbd-43e8-8b32-9fade3ae572b`) — site `candela-terminal`, https://candela-terminal.netlify.app.
 
 Never create accounts, change account settings, or copy tokens anywhere (including GitHub secrets). Deploys run from this machine with the existing CLI sessions.
 
