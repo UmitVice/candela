@@ -1,0 +1,8 @@
+{
+  "apiBaseUrl": "",
+  "discoveryUrl": "",
+  "chatTransport": "ws",
+  "mode": "auto",
+  "environment": "development",
+  "release": "0.1.0"
+}
