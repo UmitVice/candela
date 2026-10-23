@@ -1,0 +1,34 @@
+<a class="skip" href="#prompt-input">Skip to prompt</a>
+<cd-top-bar
+  (openPalette)="openPalette()"
+  (openNav)="openNav()"
+  (toggleContext)="toggleContext()"
+  (openStatus)="openStatus()"
+/>
+<div
+  class="body"
+  [class.with-rail]="showRail()"
+  [class.rail-collapsed]="railCollapsed()"
+  [class.with-context]="showContext()"
+>
+  @if (showRail()) {
+    <nav class="rail" aria-label="Sessions and watchlist">
+      <cd-left-rail
+        [collapsed]="railCollapsed()"
+        [collapsible]="layout.isDesktop()"
+        (expand)="expandRail()"
+        (collapse)="prefs.railCollapsed.set(true)"
+      />
+    </nav>
+  }
+  <main class="main" id="main">
+    <router-outlet />
+  </main>
+  @if (showContext()) {
+    <cd-context-panel class="context" />
+  }
+</div>
+@if (!layout.isMobile()) {
+  <cd-status-line (openStatus)="openStatus()" />
+}
+<cd-update-toast />

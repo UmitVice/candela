@@ -1,0 +1,96 @@
+<div class="dock">
+  @if (suggestions().length) {
+    <ul class="suggest" id="cmd-suggest" role="listbox" aria-label="Commands">
+      @for (s of suggestions(); track s.name; let i = $index) {
+        <li
+          [id]="'cmd-' + s.name"
+          role="option"
+          class="opt"
+          [class.active]="i === selected()"
+          [attr.aria-selected]="i === selected()"
+          tabindex="-1"
+          (mousedown)="$event.preventDefault()"
+          (click)="complete(s)"
+          (keydown.enter)="complete(s)"
+        >
+          <span class="usage mono">{{ s.usage }}</span>
+          <span class="desc">{{ s.description }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="box" [class.busy]="busy()">
+    <span class="glyph mono" aria-hidden="true">❯</span>
+    <label class="sr-only" for="prompt-input">Ask Candela</label>
+    <textarea
+      #field
+      id="prompt-input"
+      class="field mono"
+      rows="1"
+      enterkeyhint="send"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      maxlength="8000"
+      role="combobox"
+      aria-autocomplete="list"
+      [attr.aria-expanded]="suggestions().length > 0"
+      [attr.aria-controls]="suggestions().length ? 'cmd-suggest' : null"
+      [attr.aria-activedescendant]="
+        suggestions().length ? 'cmd-' + suggestions()[selected()]?.name : null
+      "
+      [placeholder]="
+        busy()
+          ? 'Generating… Esc to stop'
+          : layout.isMobile()
+            ? 'Ask about a stock…'
+            : 'Ask about a stock, or type / for commands'
+      "
+      (input)="onInput($any($event.target).value)"
+      (keydown)="onKeydown($event)"
+    ></textarea>
+    @if (busy()) {
+      <button
+        type="button"
+        class="send stop"
+        aria-label="Stop generation (Esc)"
+        title="Stop (Esc)"
+        (click)="stop.emit()"
+      >
+        <svg lucideSquare [size]="14"></svg>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="send"
+        aria-label="Send"
+        title="Send (Enter)"
+        [disabled]="!canSend()"
+        (click)="send()"
+      >
+        <svg lucideArrowUp [size]="16"></svg>
+      </button>
+    }
+  </div>
+
+  @if (layout.isMobile()) {
+    <div class="chips" role="toolbar" aria-label="Quick commands">
+      @for (chip of chips; track chip) {
+        <button type="button" class="chip mono" [disabled]="busy()" (click)="useChip(chip)">
+          {{ chip }}
+        </button>
+      }
+    </div>
+  } @else {
+    <div class="hints">
+      <span><span class="kbd">Enter</span> send</span>
+      <span><span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
+      <span><span class="kbd">↑</span> history</span>
+      <span><span class="kbd">/</span> commands</span>
+      <span><span class="kbd">Esc</span> stop</span>
+      <span class="grow"></span>
+      <span>Not financial advice</span>
+    </div>
+  }
+</div>

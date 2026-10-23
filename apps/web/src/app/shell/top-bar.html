@@ -1,0 +1,140 @@
+<div class="bar">
+  @if (!layout.isDesktop()) {
+    <button
+      type="button"
+      class="icon-btn"
+      aria-label="Sessions and watchlist"
+      (click)="openNav.emit()"
+    >
+      <svg lucideMenu [size]="18"></svg>
+    </button>
+  }
+
+  <a class="brand" routerLink="/" aria-label="Candela Terminal home">
+    <cd-brand-mark [size]="22" />
+    @if (!layout.isMobile()) {
+      <span class="wordmark">candela</span>
+    }
+  </a>
+
+  <nav class="modes" aria-label="View">
+    <a
+      routerLink="/"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      ariaCurrentWhenActive="page"
+      class="mode"
+    >
+      <svg lucideSquareTerminal [size]="14"></svg>
+      <span>Terminal</span>
+    </a>
+    <a
+      routerLink="/observatory"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      class="mode"
+    >
+      <svg lucideTelescope [size]="14"></svg>
+      <span>Observatory</span>
+    </a>
+  </nav>
+
+  <div class="spacer"></div>
+
+  @if (gateway.isReplay() && !layout.isMobile()) {
+    <span
+      class="replay-badge"
+      title="The live gateway is offline; answers are recorded demo sessions"
+    >
+      Replay — recorded demo
+    </span>
+  }
+
+  @if (layout.isMobile()) {
+    <button
+      type="button"
+      class="icon-btn status-dot-btn"
+      [attr.data-tone]="pillTone()"
+      aria-label="Connection and model status"
+      (click)="openStatus.emit()"
+    >
+      <span class="dot" aria-hidden="true"></span>
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="pill"
+      [attr.data-tone]="pillTone()"
+      [cdkMenuTriggerFor]="modelMenu"
+      aria-label="Model: {{ models.label() }}. Change model tier"
+    >
+      <span class="dot" aria-hidden="true"></span>
+      <span class="pill-text mono">{{ models.label() }}</span>
+      <svg lucideChevronDown [size]="12"></svg>
+    </button>
+  }
+
+  @if (pwa.canInstall() && !layout.isMobile()) {
+    <button type="button" class="btn install" (click)="pwa.install()">
+      <svg lucideDownload [size]="14"></svg>
+      Install
+    </button>
+  }
+
+  @if (!layout.isMobile()) {
+    <button
+      type="button"
+      class="icon-btn"
+      aria-label="Command palette (Ctrl+K)"
+      title="Command palette  ⌘K"
+      (click)="openPalette.emit()"
+    >
+      <svg lucideCommand [size]="16"></svg>
+    </button>
+  }
+  <button
+    type="button"
+    class="icon-btn"
+    aria-label="Context panel"
+    [attr.aria-pressed]="layout.isDesktop() ? prefs.contextOpen() : null"
+    (click)="toggleContext.emit()"
+  >
+    <svg lucidePanelRight [size]="16"></svg>
+  </button>
+</div>
+
+<ng-template #modelMenu>
+  <div cdkMenu class="menu" aria-label="Model settings">
+    <div class="menu-label">Inference tier</div>
+    <div cdkMenuGroup>
+      @for (option of tierOptions; track option.value) {
+        <button
+          type="button"
+          cdkMenuItemRadio
+          class="menu-item"
+          [cdkMenuItemChecked]="prefs.model() === option.value"
+          (cdkMenuItemTriggered)="prefs.model.set(option.value)"
+        >
+          <span class="check" aria-hidden="true">{{
+            prefs.model() === option.value ? '●' : '○'
+          }}</span>
+          <span class="menu-text">
+            <span>{{ option.label }}</span>
+            <span class="menu-hint">{{ option.hint }}</span>
+          </span>
+        </button>
+      }
+    </div>
+    <div class="menu-sep" role="separator"></div>
+    <button
+      type="button"
+      cdkMenuItemCheckbox
+      class="menu-item"
+      [cdkMenuItemChecked]="prefs.reasoning()"
+      (cdkMenuItemTriggered)="prefs.reasoning.set(!prefs.reasoning())"
+    >
+      <span class="check" aria-hidden="true">{{ prefs.reasoning() ? '✓' : '' }}</span>
+      <span class="menu-text"><span>Show reasoning</span></span>
+    </button>
+  </div>
+</ng-template>

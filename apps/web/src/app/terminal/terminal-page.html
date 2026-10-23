@@ -1,0 +1,85 @@
+@if (gateway.isReplay()) {
+  <div class="banner" role="status">
+    <span class="badge mono">Replay — recorded demo</span>
+    <span class="banner-text">
+      {{
+        gateway.forcedReplay
+          ? 'Answers are scripted recordings with illustrative data, streamed exactly like the live model.'
+          : gateway.connection().reason + ' Showing scripted recordings with illustrative data.'
+      }}
+    </span>
+    @if (!gateway.forcedReplay) {
+      <button
+        type="button"
+        class="banner-btn"
+        (click)="gateway.connect()"
+        [disabled]="gateway.connection().state === 'connecting'"
+      >
+        Reconnect
+      </button>
+    }
+  </div>
+}
+
+<div
+  class="scrollback panel-scroll"
+  #scrollback
+  cdkScrollable
+  (scroll)="onScroll()"
+  role="log"
+  aria-label="Terminal"
+  aria-live="off"
+>
+  <div class="content">
+    <cd-boot-sequence (done)="booted.set(true)" />
+
+    @for (turn of turns(); track turn.id) {
+      <div class="turn-wrap" [attr.data-kind]="turn.kind">
+        @switch (turn.kind) {
+          @case ('user') {
+            <cd-user-turn [turn]="turn" />
+          }
+          @case ('assistant') {
+            <cd-assistant-turn
+              [turn]="turn"
+              [isLast]="turn.id === lastAssistantId()"
+              [busy]="chat.busy()"
+              (rate)="chat.rate(turn.id, $event)"
+              (regenerate)="chat.regenerate(turn.id)"
+            />
+          }
+          @case ('system') {
+            <cd-system-turn [turn]="turn" />
+          }
+        }
+      </div>
+    } @empty {
+      @if (booted()) {
+        <div class="empty">
+          <div class="label">Try</div>
+          <div class="suggestions">
+            @for (s of suggestions; track s.label) {
+              <button type="button" class="suggestion" (click)="suggest(s.label)">
+                <span class="mono">{{ s.label }}</span>
+                <span class="hint">{{ s.hint }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@if (!stick() && turns().length) {
+  <button type="button" class="jump" (click)="jumpToLatest()">
+    <svg lucideArrowUp [size]="13" style="transform: rotate(180deg)"></svg>
+    Latest
+  </button>
+}
+
+<div class="prompt-dock">
+  <div class="content">
+    <cd-prompt-input [busy]="chat.busy()" (submitted)="submit($event)" (stop)="chat.stop()" />
+  </div>
+</div>

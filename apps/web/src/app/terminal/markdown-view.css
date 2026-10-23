@@ -1,0 +1,148 @@
+cd-markdown {
+  display: block;
+}
+
+.md {
+  font-family: var(--font-mono);
+  font-size: var(--term-size);
+  line-height: var(--term-leading);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-0);
+  overflow-wrap: anywhere;
+}
+
+.md :is(p, ul, ol, blockquote, pre, .md-table, h1, h2, h3, h4) {
+  margin: 0 0 0.75em;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md :is(h1, h2, h3, h4) {
+  font-size: var(--term-size);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+
+.md :is(h1, h2, h3, h4)::before {
+  content: '## ';
+  color: var(--fg-2);
+  font-weight: 400;
+}
+
+.md strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.md em {
+  color: var(--fg-1);
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.6em;
+}
+
+.md li {
+  margin: 0.15em 0;
+}
+
+.md ul > li::marker {
+  content: '› ';
+  color: var(--fg-2);
+}
+
+.md code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--accent);
+  font-size: 0.95em;
+}
+
+.md pre {
+  padding: 10px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-1);
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  color: var(--fg-0);
+}
+
+.md blockquote {
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--fg-1);
+}
+
+.md a {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.md hr {
+  height: 1px;
+  border: 0;
+  background: var(--line);
+}
+
+.md .md-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.md table {
+  border-collapse: collapse;
+  min-width: 60%;
+  font-size: calc(var(--term-size) - 0.5px);
+}
+
+.md th,
+.md td {
+  padding: 4px 14px 4px 0;
+  border-bottom: 1px dashed var(--line-strong);
+  white-space: nowrap;
+}
+
+.md th {
+  border-bottom-style: solid;
+  color: var(--fg-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+.md th[align='right'],
+.md td[align='right'] {
+  text-align: right;
+}
+
+.md tbody tr:hover {
+  background: var(--bg-1);
+}
+
+.md.streaming > :last-child::after,
+.md.streaming > :is(ul, ol):last-child > li:last-child::after {
+  content: '▋';
+  margin-left: 2px;
+  color: var(--accent);
+  animation: blink 1s steps(1) infinite;
+}
+
+.md.streaming > :is(ul, ol, .md-table):last-child::after {
+  content: none;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

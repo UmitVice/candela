@@ -1,0 +1,68 @@
+:host {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 2000;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #1a1204;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.skip:focus {
+  top: 8px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.body.with-rail {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+}
+
+.body.with-rail.rail-collapsed {
+  grid-template-columns: var(--rail-w-collapsed) minmax(0, 1fr);
+}
+
+.body.with-context {
+  grid-template-columns: minmax(0, 1fr) var(--context-w);
+}
+
+.body.with-rail.with-context {
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--context-w);
+}
+
+.body.with-rail.rail-collapsed.with-context {
+  grid-template-columns: var(--rail-w-collapsed) minmax(0, 1fr) var(--context-w);
+}
+
+.rail {
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.context {
+  min-height: 0;
+  border-left: 1px solid var(--line);
+}

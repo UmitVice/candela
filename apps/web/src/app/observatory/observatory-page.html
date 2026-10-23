@@ -1,0 +1,59 @@
+<section class="page" aria-labelledby="obs-title">
+  <div class="visual" aria-hidden="true">
+    <svg viewBox="0 0 400 340" class="scene">
+      <defs>
+        <linearGradient id="obs-slab" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#121821" />
+          <stop offset="1" stop-color="#1d2633" />
+        </linearGradient>
+        <radialGradient id="obs-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#f5a524" stop-opacity="0.55" />
+          <stop offset="1" stop-color="#f5a524" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <g class="galaxy">
+        @for (s of stars; track $index) {
+          <circle [attr.cx]="s.x" [attr.cy]="s.y" [attr.r]="s.s" [style.animation-delay.s]="s.d" />
+        }
+      </g>
+      <g class="tower">
+        @for (l of layers; track l) {
+          <path
+            class="slab"
+            [attr.d]="'M200 ' + (286 - l * 16) + ' l70 -20 l-70 -20 l-70 20 Z'"
+            [style.animation-delay.ms]="l * 120"
+          />
+        }
+      </g>
+      <circle class="glow" cx="200" cy="40" r="36" fill="url(#obs-glow)" />
+      <circle class="spark" cx="200" cy="286" r="3.5" />
+    </svg>
+  </div>
+
+  <div class="copy">
+    <p class="kicker mono">observatory · coming online</p>
+    <h1 id="obs-title">See the model think.</h1>
+    <p class="lede">
+      The Observatory is the design view of Candela: a 3D instrument that renders the fine-tuned
+      model's layers, its LoRA adaptation and its sense of the market from real artifacts exported
+      by the training lab.
+    </p>
+    <ul class="modules">
+      @for (m of modules; track m.name) {
+        <li>
+          <span class="name mono">{{ m.name }}</span>
+          <span class="detail">{{ m.detail }}</span>
+        </li>
+      }
+    </ul>
+    <p class="status mono">
+      @if (staged() > 0) {
+        <span class="ok">●</span> {{ staged() }} model artifact{{ staged() === 1 ? '' : 's' }}
+        staged from the lab
+      } @else {
+        <span class="wait">●</span> waiting for the first training artifacts
+      }
+    </p>
+    <a routerLink="/" class="btn btn-primary">Back to the terminal</a>
+  </div>
+</section>

@@ -1,0 +1,189 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 6px;
+}
+
+.head h2 {
+  margin: 0;
+}
+
+.new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-1);
+  font-size: 11.5px;
+}
+
+.new:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.list {
+  margin: 0;
+  padding: 0 4px 8px;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 4px;
+}
+
+.item:hover,
+.item.active {
+  background: var(--bg-2);
+}
+
+.item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.open {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.item.active .open {
+  color: var(--fg-0);
+}
+
+.title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  font-size: 10.5px;
+  color: var(--fg-2);
+}
+
+.actions {
+  display: none;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.item:hover .actions,
+.item:focus-within .actions {
+  display: inline-flex;
+}
+
+.item:hover .time,
+.item:focus-within .time {
+  display: none;
+}
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-2);
+}
+
+.act:hover:not(:disabled) {
+  background: var(--bg-1);
+  color: var(--fg-0);
+}
+
+.act.danger:hover {
+  color: var(--down);
+}
+
+.act:disabled {
+  opacity: 0.4;
+}
+
+.rename {
+  flex: 1;
+  padding: 3px 4px;
+}
+
+.rename input {
+  width: 100%;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-0);
+  color: var(--fg-0);
+  font-size: 12.5px;
+  outline: none;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 3px 4px 3px 8px;
+  font-size: 12px;
+  color: var(--down);
+}
+
+.confirm span {
+  flex: 1;
+}
+
+@media (hover: none), (max-width: 767.98px) {
+  .actions {
+    display: inline-flex;
+  }
+
+  .time {
+    display: none;
+  }
+
+  .open {
+    min-height: 44px;
+  }
+
+  .act {
+    width: 40px;
+    height: 40px;
+  }
+
+  .rename input {
+    height: 40px;
+    font-size: 16px;
+  }
+}

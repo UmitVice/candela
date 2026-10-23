@@ -1,0 +1,107 @@
+@if (inSheet) {
+  <div class="sheet-head">
+    <span class="label">{{ variant === 'status' ? 'Status' : 'Context' }}</span>
+    <button type="button" class="icon-btn" aria-label="Close" (click)="close()">
+      <svg lucideX [size]="16"></svg>
+    </button>
+  </div>
+}
+
+<div class="scroll panel-scroll">
+  @if (variant === 'context') {
+    <section class="section" aria-labelledby="ctx-focus">
+      <div class="section-head">
+        <h2 class="label" id="ctx-focus">Focus</h2>
+        @if (shell.focusSymbol(); as symbol) {
+          <button type="button" class="link" (click)="analyze(symbol)">
+            /analyze {{ symbol }}
+          </button>
+        }
+      </div>
+      @if (quote.hasValue() && quote.value(); as q) {
+        <div class="quote">
+          <div class="q-head">
+            <span class="sym mono">{{ q.symbol }}</span>
+            <span class="exch">{{ q.exchange }}</span>
+          </div>
+          <div class="name">{{ q.name }}</div>
+          <div class="px-row">
+            <span class="px mono">{{ fmtPrice(q.close) }}</span>
+            <span class="chg mono" [class]="toneOf(q.change)">
+              {{ q.change > 0 ? '+' : '' }}{{ fmtPrice(q.change) }} · {{ fmtPct(q.changePct) }}
+            </span>
+          </div>
+          <dl class="stats">
+            <div>
+              <dt>Open</dt>
+              <dd class="mono">{{ fmtPrice(q.open) }}</dd>
+            </div>
+            <div>
+              <dt>Prev close</dt>
+              <dd class="mono">{{ fmtPrice(q.previousClose) }}</dd>
+            </div>
+            <div>
+              <dt>Day range</dt>
+              <dd class="mono">{{ fmtPrice(q.low) }}–{{ fmtPrice(q.high) }}</dd>
+            </div>
+            <div>
+              <dt>Volume</dt>
+              <dd class="mono">{{ fmtCompact(q.volume) }}</dd>
+            </div>
+            <div>
+              <dt>Avg vol 30d</dt>
+              <dd class="mono">{{ fmtCompact(q.avgVolume30d) }}</dd>
+            </div>
+            <div>
+              <dt>Source</dt>
+              <dd class="mono">{{ q.source }}{{ q.delayed ? ' · delayed' : '' }}</dd>
+            </div>
+          </dl>
+          <div class="range" aria-label="52-week range">
+            <div class="range-labels mono">
+              <span>{{ fmtPrice(q.fiftyTwoWeekLow) }}</span>
+              <span class="label">52W</span>
+              <span>{{ fmtPrice(q.fiftyTwoWeekHigh) }}</span>
+            </div>
+            <div class="track">
+              <div class="marker" [style.left.%]="rangePct()"></div>
+            </div>
+          </div>
+          <div class="asof mono">as of {{ q.asOf }}</div>
+        </div>
+      } @else if (quote.isLoading()) {
+        <div class="muted mono">loading…</div>
+      } @else {
+        <div class="muted">No quote for {{ shell.focusSymbol() ?? 'this symbol' }}.</div>
+      }
+    </section>
+  }
+
+  <section class="section" aria-labelledby="ctx-session">
+    <div class="section-head">
+      <h2 class="label" id="ctx-session">Session</h2>
+    </div>
+    <cd-status-details />
+  </section>
+
+  @if (variant === 'context') {
+    <section class="section" aria-labelledby="ctx-keys">
+      <div class="section-head">
+        <h2 class="label" id="ctx-keys">Shortcuts</h2>
+      </div>
+      <ul class="keys">
+        <li><span class="kbd">Enter</span> send</li>
+        <li><span class="kbd">Shift</span><span class="kbd">Enter</span> new line</li>
+        <li><span class="kbd">↑</span><span class="kbd">↓</span> history</li>
+        <li><span class="kbd">Esc</span> stop generation</li>
+        <li><span class="kbd">⌘</span><span class="kbd">K</span> command palette</li>
+        <li><span class="kbd">/</span> slash commands</li>
+      </ul>
+    </section>
+  }
+
+  <p class="disclaimer">
+    Candela is an educational research tool. Outputs can be wrong or stale and are not financial
+    advice.
+  </p>
+</div>

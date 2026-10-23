@@ -1,0 +1,105 @@
+.boot {
+  padding: 4px 0 12px;
+  font-size: var(--term-size);
+  line-height: var(--term-leading);
+  color: var(--fg-1);
+}
+
+.title {
+  color: var(--fg-0);
+}
+
+.brand {
+  font-weight: 700;
+  background: var(--flame);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dim {
+  color: var(--fg-2);
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  animation: in var(--dur) var(--ease-out);
+}
+
+.arrow {
+  color: var(--accent);
+}
+
+.key-label {
+  min-width: 11ch;
+  color: var(--fg-1);
+}
+
+.dots {
+  flex: 0 1 80px;
+  border-bottom: 1px dotted var(--line-strong);
+  transform: translateY(-4px);
+}
+
+.value {
+  min-width: 0;
+  color: var(--fg-0);
+  overflow-wrap: anywhere;
+}
+
+.value[data-tone='ok'] {
+  color: var(--up);
+}
+
+.value[data-tone='warn'] {
+  color: var(--warn);
+}
+
+.value[data-tone='info'] {
+  color: var(--info);
+}
+
+.hint {
+  margin-top: 6px;
+  color: var(--fg-2);
+  animation: in var(--dur) var(--ease-out);
+}
+
+.key {
+  color: var(--accent);
+}
+
+.cursor {
+  color: var(--accent);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dots {
+    display: none;
+  }
+
+  .key-label {
+    min-width: 0;
+  }
+
+  .line {
+    flex-wrap: wrap;
+    column-gap: 6px;
+  }
+}

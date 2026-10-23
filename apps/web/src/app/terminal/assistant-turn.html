@@ -1,0 +1,120 @@
+@let t = turn();
+<article class="turn" [attr.aria-busy]="streaming()" aria-label="Candela answer">
+  <header class="head mono">
+    <span class="who">candela</span>
+    @if (header()) {
+      <span class="sep">·</span><span>{{ header() }}</span>
+    }
+    @if (t.transport === 'replay') {
+      <span class="tag replay">replay</span>
+    }
+    @if (t.route === 'fallback') {
+      <span class="tag">fallback</span>
+    }
+    <span class="time">{{ fmtClock(t.createdAt) }}</span>
+  </header>
+
+  @if (t.status === 'pending' && t.segments.length === 0) {
+    <div class="waiting mono" aria-hidden="true"><span class="cursor">▋</span></div>
+  }
+  @if (t.status === 'queued' && t.queue) {
+    <div class="queued mono">
+      ⧗ queued · position {{ t.queue.position
+      }}{{ t.queue.etaMs ? ' · ~' + (t.queue.etaMs / 1000).toFixed(0) + ' s' : '' }}
+    </div>
+  }
+
+  @for (segment of t.segments; track $index; let i = $index) {
+    @switch (segment.type) {
+      @case ('reasoning') {
+        <cd-reasoning-block
+          [segment]="asReasoning(segment)"
+          [answerStarted]="reasoningAnswerStarted(i)"
+        />
+      }
+      @case ('tool') {
+        <cd-tool-line [segment]="asTool(segment)" />
+      }
+      @case ('answer') {
+        <cd-markdown
+          class="answer"
+          [source]="segment.text"
+          [streaming]="streaming() && i === lastAnswerIndex()"
+        />
+      }
+    }
+  }
+
+  @if (t.status === 'error') {
+    <cd-error-block [turn]="t" [disabled]="busy()" (retry)="regenerate.emit()" />
+  }
+
+  @if (!streaming() && t.status !== 'error') {
+    <footer class="foot mono">
+      @if (t.usage; as u) {
+        <span class="usage">
+          {{ u.completionTokens }} tok · {{ u.tokensPerSecond }} tok/s · TTFT
+          {{ (u.timeToFirstTokenMs / 1000).toFixed(1) }} s
+        </span>
+      }
+      @if (t.status === 'cancelled') {
+        <span class="stopped">stopped</span>
+      }
+      @if (t.finishReason === 'length') {
+        <span class="stopped">truncated · max tokens</span>
+      }
+      @if (t.finishReason === 'tool_limit') {
+        <span class="stopped">tool limit reached</span>
+      }
+      <span class="actions">
+        @if (hasAnswer()) {
+          <button
+            type="button"
+            class="act"
+            [attr.aria-label]="copied() ? 'Copied' : 'Copy answer'"
+            [title]="copied() ? 'Copied' : 'Copy'"
+            (click)="copy()"
+          >
+            @if (copied()) {
+              <svg lucideCheck [size]="13"></svg>
+            } @else {
+              <svg lucideCopy [size]="13"></svg>
+            }
+          </button>
+          <button
+            type="button"
+            class="act"
+            aria-label="Good answer"
+            title="Good answer"
+            [attr.aria-pressed]="t.feedback === 1"
+            (click)="rate.emit(1)"
+          >
+            <svg lucideThumbsUp [size]="13"></svg>
+          </button>
+          <button
+            type="button"
+            class="act"
+            aria-label="Bad answer"
+            title="Bad answer"
+            [attr.aria-pressed]="t.feedback === -1"
+            (click)="rate.emit(-1)"
+          >
+            <svg lucideThumbsDown [size]="13"></svg>
+          </button>
+        }
+        @if (isLast()) {
+          <button
+            type="button"
+            class="act"
+            aria-label="Regenerate answer"
+            title="Regenerate"
+            [disabled]="busy()"
+            (click)="regenerate.emit()"
+          >
+            <svg lucideRotateCcw [size]="13"></svg>
+          </button>
+        }
+      </span>
+    </footer>
+  }
+</article>
