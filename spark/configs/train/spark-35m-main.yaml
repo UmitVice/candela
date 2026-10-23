@@ -16,5 +16,5 @@ lease_holder: spark-trainer
 lease_priority: 20
 memory_budget_gb: 4.0
 optim:
-  muon_lr: 0.02
-  adam_lr: 0.002
+  muon_lr: 0.04
+  adam_lr: 0.004

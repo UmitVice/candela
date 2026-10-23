@@ -1,0 +1,21 @@
+# Uninterrupted 200-step twin of spark-35m-main: reference trajectory for the exact-resume check.
+run_id: resume-ref
+preset: spark-35m
+data_version: v0
+seq_len: 1024
+micro_batch: 2
+accum: 16
+seed: 1234
+warmup_steps: 300
+eval_every: 250
+eval_windows_per_source: 16
+checkpoint_every_sec: 600
+keep_last: 3
+milestone_every_tokens: 250000000
+lease_holder: spark-trainer
+lease_priority: 70
+memory_budget_gb: 4.0
+optim:
+  muon_lr: 0.04
+  adam_lr: 0.004
+max_steps: 200

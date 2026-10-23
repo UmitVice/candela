@@ -101,10 +101,29 @@ def _is_milestone(d: Path) -> bool:
         return False
 
 
-def _prune(root: Path, keep_last: int) -> None:
-    regular = [d for d in sorted(root.glob("step-*")) if not _is_milestone(d)]
+def _strip_optimizer(d: Path) -> None:
+    opt = d / "optimizer.safetensors"
+    if not opt.exists():
+        return
+    manifest = json.loads((d / "manifest.json").read_text())
+    manifest["files"].pop("optimizer.safetensors", None)
+    manifest["optimizerStripped"] = True
+    tmp = d / "manifest.json.tmp"
+    _write_json(tmp, manifest)
+    _fsync_file(tmp)
+    os.replace(tmp, d / "manifest.json")
+    opt.unlink()
+
+
+def _prune(root: Path, keep_last: int, keep_milestone_optimizers: int = 2) -> None:
+    ordered = sorted(root.glob("step-*"))
+    regular = [d for d in ordered if not _is_milestone(d)]
     for d in regular[:-keep_last]:
         shutil.rmtree(d, ignore_errors=True)
+    # Old milestones stay as fork points with fp32 weights only, so weeks of training do not fill the disk.
+    milestones = [d for d in ordered if _is_milestone(d)]
+    for d in milestones[:-keep_milestone_optimizers]:
+        _strip_optimizer(d)
     for d in root.glob(".tmp-*"):
         if not d.name.endswith(f"-{os.getpid()}"):
             shutil.rmtree(d, ignore_errors=True)
@@ -143,6 +162,9 @@ def load(d: Path) -> tuple[dict[str, mx.array], Any, dict[str, Any]]:
     params = mx.load(str(d / "model.safetensors"))
     assert isinstance(params, dict)
     state = json.loads((d / "state.json").read_text())
+    if not (d / "optimizer.safetensors").exists():
+        _log.warning("checkpoint has no optimizer state; optimizer restarts", checkpoint=d.name)
+        return params, None, state
     raw_opt = mx.load(str(d / "optimizer.safetensors"))
     assert isinstance(raw_opt, dict)
     scalars = set(state.get("optimizerScalars", []))

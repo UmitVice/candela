@@ -91,6 +91,8 @@ class Trainer:
         self.pause_reason: str | None = None
         self.milestones: list[dict[str, Any]] = []
         self.next_milestone_tokens = cfg.milestone_every_tokens
+        self._env_checked_at = 0.0
+        self._env_reason: str | None = None
 
     def event(self, kind: str, **fields: Any) -> None:
         self.events.write(json.dumps({"type": kind, "at": now_iso(), "step": self.step, **fields}) + "\n")
@@ -162,7 +164,8 @@ class Trainer:
             raise RuntimeError("checkpoint tokenizer differs from the frozen tokenizer")
         self.model.load_weights(list(params.items()), strict=True)
         self.opt.inner.init(self.model.trainable_parameters())
-        self.opt.state = opt_state
+        if opt_state is not None:
+            self.opt.state = opt_state
         self.step = int(state["step"])
         self.tokens = int(state["tokens"])
         self.elapsed_train_sec = float(state.get("elapsedTrainSec", 0.0))
@@ -230,18 +233,27 @@ class Trainer:
         last_override = 0.0
         override: dict[str, Any] = {}
         while not self.stop_requested:
-            if time.time() - last_override > 5:
+            now = time.time()
+            if now - last_override > 5 or waited_since is not None:
                 override = read_override()
-                last_override = time.time()
+                last_override = now
+            # Subprocess-based checks are cached for a few seconds; the lease check below runs every step.
+            if waited_since is not None or now - self._env_checked_at > 10:
+                self._env_checked_at = now
+                self._env_reason = None
+                if resources.on_battery(override.get("simulateBattery")):
+                    self._env_reason = "on battery power"
+                elif resources.thermal_serious():
+                    self._env_reason = "thermal pressure"
+                elif foreign := resources.foreign_training():
+                    self._env_reason = f"external training running ({foreign[0]})"
             reason = None
             if override.get("pause"):
                 reason = "paused by override"
-            elif resources.on_battery(override.get("simulateBattery")):
+            elif override.get("simulateBattery") and not self._env_reason:
                 reason = "on battery power"
-            elif resources.thermal_serious():
-                reason = "thermal pressure"
-            elif foreign := resources.foreign_training():
-                reason = f"external training running ({foreign[0]})"
+            elif self._env_reason:
+                reason = self._env_reason
             else:
                 higher = self.lease.higher()
                 if higher:
