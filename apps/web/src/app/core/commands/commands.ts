@@ -82,10 +82,10 @@ export const COMMANDS: readonly CommandSpec[] = [
   },
   {
     name: 'model',
-    usage: '/model auto|pro|lite',
-    description: 'Choose the inference tier',
+    usage: '/model',
+    description: 'Show the model behind the terminal',
     kind: 'local',
-    example: '/model pro',
+    example: '/model',
   },
   {
     name: 'reasoning',
@@ -215,15 +215,11 @@ export class CommandService {
         return true;
       }
       case 'model': {
-        const value = args[0]?.toLowerCase();
-        if (value !== 'auto' && value !== 'pro' && value !== 'lite') {
-          return this.info(`Model is **${this.prefs.model()}**. Usage: \`/model auto|pro|lite\`.`);
-        }
-        this.prefs.model.set(value);
+        const m = this.gateway.status()?.models.find((x) => x.available) ?? null;
         return this.info(
-          value === 'auto'
-            ? 'Model set to **auto**: pro when a GPU worker is online, otherwise lite.'
-            : `Model set to **${value}**.`,
+          m
+            ? `Candela serves one tier: **PRO** · ${m.displayName} ${m.version} (${m.runtime} ${m.quantization}) on the Apple Silicon GPU worker.${this.gateway.isReplay() ? ' Replay mode plays recorded sessions of it.' : ''}`
+            : 'Candela serves one tier: **PRO**, the fine-tuned 12B model on the Apple Silicon GPU worker.',
         );
       }
       case 'reasoning': {

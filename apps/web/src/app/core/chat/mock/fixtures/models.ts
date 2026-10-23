@@ -3,25 +3,10 @@ import { SNAPSHOT_AS_OF } from './universe';
 
 export const DEMO_PRO_MODEL: ModelInfo = {
   id: 'candela-12b-demo',
-  displayName: 'Candela 12B · scripted demo',
+  displayName: 'Candela 12B',
   tier: 'pro',
   version: 'v0.1-demo',
   baseModel: 'google/gemma-4-12B-it',
-  runtime: 'mlx',
-  host: 'local-gpu-worker',
-  quantization: '4bit',
-  contextLength: 8192,
-  supportsReasoning: true,
-  supportsTools: true,
-  supportsTelemetry: false,
-};
-
-export const DEMO_LITE_MODEL: ModelInfo = {
-  id: 'candela-1.7b-demo',
-  displayName: 'Candela Lite · scripted demo',
-  tier: 'lite',
-  version: 'v0.1-demo',
-  baseModel: 'Qwen/Qwen3-1.7B',
   runtime: 'mlx',
   host: 'local-gpu-worker',
   quantization: '4bit',
@@ -37,10 +22,7 @@ export function demoStatus(): StatusResponse {
     version: 'replay',
     commit: 'demo',
     route: 'worker',
-    models: [
-      { ...DEMO_PRO_MODEL, available: true },
-      { ...DEMO_LITE_MODEL, available: true },
-    ],
+    models: [{ ...DEMO_PRO_MODEL, available: true }],
     workers: [],
     queue: { depth: 0, maxDepth: 8 },
     dataProviders: [

@@ -66,7 +66,7 @@
       class="pill"
       [attr.data-tone]="pillTone()"
       [cdkMenuTriggerFor]="modelMenu"
-      aria-label="Model: {{ models.label() }}. Change model tier"
+      aria-label="Model: {{ models.label() }}. Model settings"
     >
       <span class="dot" aria-hidden="true"></span>
       <span class="pill-text mono">{{ models.label() }}</span>
@@ -105,26 +105,7 @@
 
 <ng-template #modelMenu>
   <div cdkMenu class="menu" aria-label="Model settings">
-    <div class="menu-label">Inference tier</div>
-    <div cdkMenuGroup>
-      @for (option of tierOptions; track option.value) {
-        <button
-          type="button"
-          cdkMenuItemRadio
-          class="menu-item"
-          [cdkMenuItemChecked]="prefs.model() === option.value"
-          (cdkMenuItemTriggered)="prefs.model.set(option.value)"
-        >
-          <span class="check" aria-hidden="true">{{
-            prefs.model() === option.value ? '●' : '○'
-          }}</span>
-          <span class="menu-text">
-            <span>{{ option.label }}</span>
-            <span class="menu-hint">{{ option.hint }}</span>
-          </span>
-        </button>
-      }
-    </div>
+    <div class="menu-label mono">{{ models.detail() }}</div>
     <div class="menu-sep" role="separator"></div>
     <button
       type="button"

@@ -2,7 +2,7 @@ import type { ChatRequest, ChatStreamEvent, ModelInfo, RecordedSession } from '.
 import { uuid } from '../util/ids';
 import type { ChatTransport } from './chat-transport';
 import { CANCELLED_EVENT, abortableDelay } from './chat-transport';
-import { DEMO_LITE_MODEL, DEMO_PRO_MODEL } from './mock/fixtures/models';
+import { DEMO_PRO_MODEL } from './mock/fixtures/models';
 import { rateLimited, scenarioFor } from './mock/fixtures/scenarios';
 import { classify } from './mock/intent';
 import { toStreamEvent } from './stream-decoding';
@@ -17,7 +17,7 @@ export class ReplayChatTransport implements ChatTransport {
   pick(request: ChatRequest): RecordedSession {
     const now = Date.now();
     while (this.recent.length && (this.recent[0] ?? 0) < now - WINDOW_MS) this.recent.shift();
-    const model: ModelInfo = request.model === 'lite' ? DEMO_LITE_MODEL : DEMO_PRO_MODEL;
+    const model: ModelInfo = DEMO_PRO_MODEL;
     const messageId = uuid();
     if (this.recent.length >= MAX_REQUESTS_PER_WINDOW) {
       const retryAfterMs = Math.max(1000, (this.recent[0] ?? now) + WINDOW_MS - now);

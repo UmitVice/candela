@@ -1,6 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
 import { LucideRefreshCw } from '@lucide/angular';
-import type { ModelPreference } from '../core/api/types';
 import { RUNTIME_CONFIG } from '../core/config/runtime-config';
 import { GatewayService } from '../core/gateway/gateway.service';
 import { PwaService } from '../core/pwa/pwa.service';
@@ -39,21 +38,6 @@ import { ModelStatusService } from './model-status.service';
       <dd class="mono">{{ config.release }}{{ pwa.offline() ? ' · offline' : '' }}</dd>
     </dl>
 
-    <fieldset class="tiers">
-      <legend class="label">Inference tier</legend>
-      @for (tier of tiers; track tier) {
-        <label class="tier">
-          <input
-            type="radio"
-            name="tier"
-            [value]="tier"
-            [checked]="prefs.model() === tier"
-            (change)="prefs.model.set(tier)"
-          />
-          <span>{{ tier }}</span>
-        </label>
-      }
-    </fieldset>
     <label class="toggle">
       <input
         type="checkbox"
@@ -116,19 +100,6 @@ import { ModelStatusService } from './model-status.service';
     .state[data-tone='connecting'] {
       color: var(--info);
     }
-    .tiers {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 14px 0 0;
-      padding: 0;
-      border: 0;
-    }
-    .tiers legend {
-      float: left;
-      margin-right: 8px;
-    }
-    .tier,
     .toggle {
       display: inline-flex;
       align-items: center;
@@ -136,14 +107,12 @@ import { ModelStatusService } from './model-status.service';
       min-height: 32px;
       font-size: 12.5px;
       color: var(--fg-1);
-      text-transform: capitalize;
     }
     input {
       accent-color: var(--accent);
     }
     .toggle {
-      margin-top: 4px;
-      text-transform: none;
+      margin-top: 12px;
     }
     .reconnect {
       margin-top: 10px;
@@ -151,7 +120,6 @@ import { ModelStatusService } from './model-status.service';
       font-size: 12px;
     }
     @media (max-width: 767.98px) {
-      .tier,
       .toggle {
         min-height: 44px;
       }
@@ -167,7 +135,6 @@ export class StatusDetails {
   protected readonly models = inject(ModelStatusService);
   protected readonly pwa = inject(PwaService);
   protected readonly config = inject(RUNTIME_CONFIG);
-  protected readonly tiers: ModelPreference[] = ['auto', 'pro', 'lite'];
 
   protected readonly tone = computed(() => {
     const c = this.gateway.connection();

@@ -136,6 +136,10 @@
   background: var(--warn);
 }
 
+[data-tone='offline'] .dot {
+  background: var(--down);
+}
+
 [data-tone='connecting'] .dot {
   background: var(--info);
   animation: pulse 1.2s ease-in-out infinite;

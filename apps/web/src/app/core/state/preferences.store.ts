@@ -51,7 +51,7 @@ export class PreferencesStore {
   });
 
   readonly model = signal<ModelPreference>(
-    ['auto', 'pro', 'lite'].includes(this.initial.model) ? this.initial.model : 'auto',
+    ['auto', 'pro'].includes(this.initial.model) ? this.initial.model : 'auto',
   );
   readonly reasoning = signal(this.initial.reasoning !== false);
   readonly railCollapsed = signal(!!this.initial.railCollapsed);
