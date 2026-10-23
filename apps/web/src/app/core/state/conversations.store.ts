@@ -107,15 +107,20 @@ export const ConversationsStore = signalStore(
 
     return {
       async load(): Promise<void> {
-        const conversations = (await repo.loadAll()).map(settleInterrupted);
-        let activeId: string | null = null;
+        const stored = (await repo.loadAll()).map(settleInterrupted);
+        let storedActiveId: string | null = null;
         try {
-          activeId = localStorage.getItem(ACTIVE_KEY);
+          storedActiveId = localStorage.getItem(ACTIVE_KEY);
         } catch {
-          activeId = null;
+          storedActiveId = null;
         }
-        const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
-        const list = active ? conversations : [blank(), ...conversations];
+        const early = store.conversations().filter((c) => !stored.some((s) => s.id === c.id));
+        const merged = [...early, ...stored];
+        const active =
+          merged.find((c) => c.id === store.activeId()) ??
+          merged.find((c) => c.id === storedActiveId) ??
+          merged[0];
+        const list = active ? merged : [blank(), ...merged];
         patchState(store, { conversations: list, loaded: true });
         setActive(active?.id ?? list[0]?.id ?? null);
       },

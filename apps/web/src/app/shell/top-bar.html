@@ -41,7 +41,7 @@
 
   <div class="spacer"></div>
 
-  @if (gateway.isReplay() && !layout.isMobile()) {
+  @if (gateway.isReplay() && layout.isDesktop()) {
     <span
       class="replay-badge"
       title="The live gateway is offline; answers are recorded demo sessions"

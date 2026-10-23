@@ -41,5 +41,14 @@ export class ModelStatusService {
     return `${m.tier.toUpperCase()} · ${m.version}`;
   });
 
-  readonly tokensPerSecond = computed(() => this.chat.lastUsage()?.tokensPerSecond ?? null);
+  readonly tokensPerSecond = computed(() => {
+    const live = this.chat.lastUsage()?.tokensPerSecond;
+    if (live) return live;
+    const turns = this.store.active()?.turns ?? [];
+    for (let i = turns.length - 1; i >= 0; i--) {
+      const turn = turns[i];
+      if (turn?.kind === 'assistant' && turn.usage) return turn.usage.tokensPerSecond;
+    }
+    return null;
+  });
 }

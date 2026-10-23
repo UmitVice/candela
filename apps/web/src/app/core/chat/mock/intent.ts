@@ -126,7 +126,8 @@ export function classify(request: ChatRequest): Intent {
   const known = tickers.filter((s) => findInstrument(s));
   const unknown = tickers.filter((s) => !findInstrument(s) && s.length >= 2);
   const company = known.length === 0 ? companyIn(text) : null;
-  const contextual = known.length === 0 && !company ? lastMentionedSymbol(request) : null;
+  const contextual =
+    known.length === 0 && !company && unknown.length === 0 ? lastMentionedSymbol(request) : null;
   const primary = known[0] ?? company?.symbol ?? contextual;
 
   if (known.length >= 2) {

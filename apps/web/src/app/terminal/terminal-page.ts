@@ -84,9 +84,18 @@ export class TerminalPage {
     });
   }
 
+  private userScrollAt = 0;
+
+  protected markUserScroll(): void {
+    this.userScrollAt = performance.now();
+  }
+
+  // Scroll events caused by our own scrollTo land a frame later, after more tokens may have grown
+  // the content, so only a recent wheel, touch or key gesture may unpin the view.
   protected onScroll(): void {
     const distance = this.scroller().measureScrollOffset('bottom');
-    this.stick.set(distance < 48);
+    if (distance < 48) this.stick.set(true);
+    else if (performance.now() - this.userScrollAt < 600) this.stick.set(false);
   }
 
   protected scrollToBottom(smooth: boolean): void {

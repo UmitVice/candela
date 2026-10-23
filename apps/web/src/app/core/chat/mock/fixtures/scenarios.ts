@@ -158,7 +158,7 @@ function analysis(
     .tool(indicatorStep(inst))
     .tool(forecastStep(inst))
     .reasoning(
-      `Close is ${quote(inst).close}. I will summarise price action, technicals and the forecast band, then give a balanced bottom line with the main risk.`,
+      `Close is ${quote(inst).close}. I will summarize price action, technicals and the forecast band, then give a balanced bottom line with the main risk.`,
     )
     .answer((advice ? ADVICE_PREFACE : '') + analysisBody(inst))
     .finish();
@@ -414,7 +414,7 @@ function unknownSymbol(
     })
     .answer(
       [
-        `I couldn't find **${symbol}** among US-listed symbols in the data snapshot, so I have no prices or filings to analyse, and I won't make numbers up.`,
+        `I couldn't find **${symbol}** among US-listed symbols in the data snapshot, so I have no prices or filings to analyze, and I won't make numbers up.`,
         '',
         'A few things to check:',
         '- Is the ticker spelled correctly? Class shares use a dot, as in `BRK.B`.',

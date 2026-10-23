@@ -283,7 +283,7 @@ export class CommandService {
   }
 
   private helpText(): string {
-    const rows = COMMANDS.map((c) => `| \`${c.usage}\` | ${c.description} |`);
+    const rows = COMMANDS.map((c) => `| \`${c.usage.replace(/\|/g, '\\|')}\` | ${c.description} |`);
     return [
       '**Commands**',
       '',

@@ -17,7 +17,7 @@ const MODULES = [
   },
   {
     name: 'Embedding Galaxy',
-    detail: 'US equities placed by how the model represents them, coloured by sector.',
+    detail: 'US equities placed by how the model represents them, colored by sector.',
   },
   {
     name: 'Lab HUD',

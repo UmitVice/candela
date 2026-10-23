@@ -2,11 +2,19 @@
   <div class="banner" role="status">
     <span class="badge mono">Replay — recorded demo</span>
     <span class="banner-text">
-      {{
-        gateway.forcedReplay
-          ? 'Answers are scripted recordings with illustrative data, streamed exactly like the live model.'
-          : gateway.connection().reason + ' Showing scripted recordings with illustrative data.'
-      }}
+      @if (layout.isMobile()) {
+        {{
+          gateway.forcedReplay
+            ? 'Scripted recordings, illustrative data.'
+            : 'Gateway offline · illustrative data.'
+        }}
+      } @else {
+        {{
+          gateway.forcedReplay
+            ? 'Answers are scripted recordings with illustrative data, streamed exactly like the live model.'
+            : gateway.connection().reason + ' Showing scripted recordings with illustrative data.'
+        }}
+      }
     </span>
     @if (!gateway.forcedReplay) {
       <button
@@ -26,6 +34,10 @@
   #scrollback
   cdkScrollable
   (scroll)="onScroll()"
+  (wheel)="markUserScroll()"
+  (touchmove)="markUserScroll()"
+  (keydown)="markUserScroll()"
+  (pointerdown)="markUserScroll()"
   role="log"
   aria-label="Terminal"
   aria-live="off"
