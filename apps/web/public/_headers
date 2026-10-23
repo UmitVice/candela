@@ -51,5 +51,5 @@
   Cache-Control: no-cache
   Content-Type: application/manifest+json
 
-/observatory/*
+/observatory/*.json
   Cache-Control: public, max-age=300
