@@ -1,127 +1,137 @@
 # Candela — Master plan
 
-Owner: Ümit Vice · Director: planning session · Started: 2026-10-23
+Owner: Ümit Vice · Director: planning session · Started: 2026-10-23 · Revised: 2026-10-23 (two-model plan, QAT, hardened exposure)
 
 ## 1. Vision
 
-Candela is a portfolio-grade, end-to-end AI product that shows what a senior AI engineer does: choose and adapt an open-weight model for a domain, build the data and evaluation machinery around it, serve it efficiently and safely, and ship a polished product that makes the model's behaviour visible.
+Candela is a portfolio-grade, end-to-end AI product that shows what a senior AI engineer does: adapt a frontier open model to a domain, build a model from first principles, own the data and evaluation machinery, serve models efficiently and safely, and ship a polished product that makes model behaviour visible.
 
-- **Domain**: equity research on US-listed stocks. The model calls deterministic tools for every number and writes balanced, cited analyses. Later it consumes data from the owner's Vaniras platform (forecasts with P10/P50/P90 bands, scores, fundamentals for ~1 000 stocks).
-- **Product**: *Candela Terminal*, a Bloomberg-inspired, mobile-first PWA (default view), and *Candela Observatory*, a 3D design view of the model (live layer activity, logit lens, LoRA adaptation across checkpoints, embedding galaxy, training and evaluation dashboards).
-- **Engineering story**: zero cost, a shared 24 GB laptop, no hosted CI, honest evaluation, strong security hygiene.
-- **Why fine-tune instead of pretraining an 8–12B model**: models like Gemma and Qwen are pretrained on 15–36 trillion tokens on thousands of GPUs; from scratch at that scale needs ~10²⁴ FLOPs and >128 GB of optimizer state, centuries on this laptop. Candela therefore adapts an open model with QLoRA for the product, and separately builds **Candela-Nano** (≈ 35M parameters) entirely from scratch — tokenizer, architecture, training loop, scaling study — to demonstrate first-principles depth.
+- **Domain**: equity research on US-listed stocks. The product model calls deterministic tools for every number and writes balanced, cited analyses. Later it consumes data from the owner's Vaniras platform (forecasts with P10/P50/P90 bands, scores, fundamentals for ~1 000 stocks).
+- **Two models**:
+  - **Candela Pro** — Gemma 4 12B on Google's 4-bit QAT weights, fine-tuned with QLoRA: the model visitors chat with.
+  - **Candela Spark** — a decoder-only family built entirely from scratch, trained 4-bit-aware from step one, growing from ≈ 35M parameters towards a Gemma 4 E2B-class model as far as the hardware allows.
+- **Product**: *Candela Terminal*, a Bloomberg-inspired, mobile-first PWA (default view), and *Candela Observatory*, a 3D design view (live layer activity and logit lens of Pro, LoRA adaptation across checkpoints, embedding galaxy, Spark's training and attention maps).
+- **Engineering story**: zero cost, a shared 24 GB laptop, no hosted CI, honest evaluation, quantization-aware everything, and a public endpoint on a personal laptop that is safe by design.
+- **Why not pretrain a 12B model from scratch**: Gemma- and Qwen-class models are pretrained on 15–36 trillion tokens on thousands of GPUs (~10²⁴ FLOPs, >128 GB of optimizer state for 8B parameters) — centuries on this laptop. Candela therefore adapts Gemma for the product and builds Spark from scratch to demonstrate first-principles depth.
 
 ## 2. Owner constraints (non-negotiable)
 
 - Go backend, Python for AI, Angular frontend (responsive PWA); modern UI and visualisation libraries.
-- Fine-tune an open-weight 8–12B model locally for free, without exhausting the machine; the owner keeps working on other projects.
+- Train locally for free without exhausting the machine; the owner keeps working on other projects.
+- Both models are built around 4-bit: Pro on Google's QAT checkpoint, Spark with QAT from scratch.
+- Spark trains continuously on the Mac and survives shutdowns and network loss.
+- Training data only from safe, reputable, current sources with verified integrity.
+- Visitors can only talk to the model: no path to files, credentials, other services or the LAN.
 - Public GitHub repository and Netlify site; regular English Conventional Commits; minimal comments; no tests until the owner asks.
-- LTS / long-supported, mutually compatible versions (pinned in `CLAUDE.md`).
-- Strict secret hygiene. No GitHub Actions. Few Netlify production deploys.
+- LTS / long-supported, mutually compatible versions (pinned in `CLAUDE.md`). No GitHub Actions. Few Netlify production deploys.
 - The owner is away: the Director decides; phase sessions ask the Director, never the owner.
 
 ## 3. Architecture
 
-See the diagram in `README.md` and ADRs 0001–0007.
+See the diagram in `README.md` and the ADRs.
 
 | Component | Responsibility |
 |---|---|
 | `apps/web` | Terminal and Observatory; WebSocket chat (SSE locally), replay mode, PWA, IndexedDB history |
-| `services/gateway` | Public API (`contracts/api.md`), chat orchestration and tool loop, deterministic market tools, rate limits, bounded queue, worker hub, OpenAI-compatible fallback upstream, internal tool API, metrics |
-| `services/worker` | MLX inference for pro and lite models, lazy load and idle unload, admission control, telemetry, worker protocol client, OpenAI-compatible HTTP for local use |
-| `ml` | Candela Lab: data, synthetic traces through the gateway's tool layer, resource-guarded LoRA training, evaluation, export, publishing, Observatory artifacts |
-| `deploy` | Live supervisor (gateway + worker + cloudflared + endpoint Gist), Netlify rendering, operations |
+| `services/gateway` | Public API (`contracts/api.md`), chat orchestration and tool loop, deterministic market tools with an egress allowlist, rate limits, bounded queue, worker hub, internal tool API on a loopback-only listener, metrics |
+| `services/worker` | MLX inference for Candela Pro (QAT int4 base + adapter), lazy load and idle unload, admission control, GPU lease, telemetry, worker protocol client |
+| `ml` | Candela Lab for Pro: data, synthetic traces through the gateway's tool layer, guarded QLoRA training, evaluation, export, publishing, Observatory artifacts |
+| `spark` | Candela Spark: tokenizer, from-scratch MLX architecture, QAT pretraining daemon, evaluation, export, scaling |
+| `deploy` | Live supervisor (gateway + worker + cloudflared + endpoint Gist), Seatbelt sandboxes, kill switch, Netlify rendering, recordings, operations |
 
-Production topology (ADR 0002): static PWA on Netlify; gateway, worker and a Cloudflare quick tunnel on the owner's Mac; endpoint published to a public Gist; replay mode when the Mac is offline; models on Hugging Face.
+Production topology (ADR 0002): static PWA on Netlify; gateway, worker and a Cloudflare quick tunnel on the owner's Mac; endpoint published to a public Gist; replay mode when the Mac is offline or busy; models on Hugging Face. Security model: ADR 0008.
 
-## 4. Model strategy
+## 4. Candela Pro — Gemma 4 12B QAT + QLoRA
 
-Findings (2026-10-23): "Qwen3.8 8B" does not exist (Qwen3.8 ships 27B and larger only). Qwen3.5 small models train poorly on MLX today (Gated-DeltaNet runs token-by-token in training with high memory, and an open MLX bug yields wrong gradients on M5 Pro for 16 key heads). Gemma 4 is Apache-2.0 and includes a dense 12B with native function calling, a system role and a thinking mode; the owner already runs it locally.
+Findings (2026-10-23): "Qwen3.8 8B" does not exist; Qwen3.5 small models are currently impractical to train on MLX/M5 Pro. Gemma 4 12B (Apache-2.0) has native function calling, a system role, a thinking mode and official QAT checkpoints. The owner already has the QAT weights locally (ADR 0003): `~/models/gemma-4-12b-it-qat-mlx-q4` (MLX affine int4, group 32), the bf16 QAT reference, and the QAT Q4 GGUF.
 
-| Tier | Default base | Fallback | Serving | Why |
-|---|---|---|---|---|
-| **Pro** | `google/gemma-4-12B-it` (start from the QAT unquantized checkpoint, quantized to MLX 4-bit) | `Qwen/Qwen3-8B` | MLX worker on the Mac (base 4-bit + adapter) | the owner's choice, strongest open model that can fit; Apache-2.0 |
-| **Lite** | `Qwen/Qwen3-1.7B` | `ibm-granite/granite-4.2-3b` | MLX on the Mac when pro cannot be admitted; later in the browser via WebLLM (prebuilt `q4f16_1` library exists) | small, dense, mature MLX support, hybrid thinking, Hermes-style tool calls |
+- **Method**: QLoRA — the QAT int4 base stays frozen exactly as Google trained it; bf16 LoRA adapters (rank 16, scale 2.0, dropout 0.05, top layers sized by the `p1-ml` probe) are learned with AdamW, cosine decay with warm-up, batch 1 × accumulation 8, sequences up to 2048, gradient checkpointing, prompt masking (one sample per supervised assistant turn) and a supervised-positions-only LM head (262k vocabulary).
+- **Serving**: int4 QAT base + unmerged adapter in the MLX worker → 4-bit by default with the base's QAT quality intact. Portability: adapter → PEFT → GGUF LoRA on the QAT Q4 GGUF.
+- **Reasoning**: training traces use non-thinking mode; the base's native thinking stays available at inference.
+- **Later**: a merged single-file release would get a short QAT/distillation pass after merging so int4 robustness is restored; KV-cache quantization for long contexts if it proves lossless in our evals.
 
-**Selection protocol** (`p1-ml`): run the fast baseline evaluation for both pro candidates and a 20-step training probe at the production sequence length under the resource guard. Keep Gemma 4 12B if its probe peak stays ≤ 9 GB with the memory techniques below and tool-call parsing works; otherwise switch to Qwen3-8B. Record the measurements in ADR 0003.
+## 5. Candela Spark — from scratch, 4-bit native
 
-**Fine-tuning method**: QLoRA with mlx-lm (LoRA on the 4-bit base), rank 16, scale 2.0, dropout 0.05, all linear projections of the top 16 layers first (widen if memory allows), AdamW, cosine decay with warm-up, batch 1 × gradient accumulation 8, `max_seq_length` 2048, gradient checkpointing, prompt masking (one sample per assistant turn because only the final message is supervised). Memory techniques: supervised-positions-only LM head in a custom loss (compute vocabulary logits only where the mask is 1, which matters for Gemma's 262k vocabulary), MLX memory and cache limits, sequence packing off.
+- **Family**: Gemma-style decoder (sandwich RMSNorm, QK-norm, GQA, RoPE with local/global bases, interleaved sliding-window/global attention, gated FFN, no biases, tied embeddings), size presets ≈ 35M → 125M → 350M → 1B → 2B; deep-and-thin at small sizes. Frozen byte-level BPE tokenizer (≈ 32k vocabulary, digit splitting, reserved chat/tool tokens) shared by every size.
+- **QAT**: int4 fake quantization (group 32, the exact MLX export grid) with a straight-through estimator on all block weights; validation loss tracked for bf16 master weights and the exact int4 export side by side.
+- **Scaling discipline**: μP-style parametrization for hyperparameter transfer, Muon for hidden matrices + AdamW for the rest, warmup–stable–decay schedule (continuous stable phase, releases from short decay branches), growth from trained checkpoints when moving up a size.
+- **Continuous operation**: a LaunchAgent daemon with atomic exact-resume checkpoints every 10 minutes and on shutdown, no network during training, memory guard, GPU lease at the lowest priority, pauses on battery or thermal pressure.
+- **Milestones**: M1 = 35M after ≈ 1–2 hours of GPU training (coherent English, finance vocabulary, int4 ≈ bf16); then steady growth in tokens, then sizes. Each milestone is published to Hugging Face and shown in the Observatory.
 
-**Export**: pro adapters stay MLX for serving; for portability convert the adapter to PEFT layout and then to a GGUF LoRA with llama.cpp's `convert_lora_to_gguf.py`, applied at runtime on Google's official QAT GGUF (`--lora`), because fusing a 12B model in bf16 needs more memory than the machine can spare. Lite is fused (de-quantized) and exported to GGUF Q4_K_M, and later to MLC `q4f16_1` for the browser.
+## 6. Data strategy
 
-**Reasoning**: training traces are in non-thinking mode; the base model's native thinking remains available and is toggled at inference (`options.reasoning`).
+Every source must be reputable and permissive; every download is pinned to a Hugging Face commit revision (or an official URL with a published checksum) and verified by SHA-256; only parquet/JSON/CSV formats; no dataset scripts, pickles or remote code.
 
-## 5. Data strategy
-
-Published weights must not inherit non-commercial terms, so training data is restricted to permissive sources; non-commercial sets are used for evaluation only.
+**Candela Pro (SFT)** — published weights must not inherit non-commercial terms, so training uses permissive sources only:
 
 | Purpose | Source | License | Use |
 |---|---|---|---|
-| Candela tool traces | synthetic, generated through the gateway's internal tool API on the price snapshot | own (Apache-2.0) | core of training; published as a dataset |
-| Agentic finance | `nvidia/Nemotron-SFT-Agentic-Finance-v1` (7 878 SEC-tool runs) | OpenMDW-1.1 | train, split per assistant turn, ≤ 2 048 tokens |
-| General function calling | ToolACE, Hermes Function Calling v1 | Apache-2.0 | train, includes "no tool needed" cases |
-| Numeric reasoning | FinQA, ConvFinQA (MIT), TAT-QA (CC-BY-4.0) | permissive | train splits for training, test splits for evaluation |
-| General retention | a permissive general SFT slice (for example `HuggingFaceTB/smoltalk`) | Apache-2.0 | ~1 k samples against forgetting |
-| Sentiment / headlines | Financial PhraseBank, FiQA-SA, headline sets | non-commercial or unclear | evaluation only |
-| Grounded QA | FinanceBench, financial-qa-10K | non-commercial or unclear | evaluation only |
-| Filings text | EDGAR-CORPUS | Apache-2.0 | v0.2: source for grounded QA generation |
+| Candela tool traces | synthetic, generated through the gateway's internal tool API on the price snapshot | own (Apache-2.0) | core of training; published |
+| Agentic finance | `nvidia/Nemotron-SFT-Agentic-Finance-v1` | OpenMDW-1.1 | train, per assistant turn, ≤ 2 048 tokens |
+| Function calling | ToolACE, Hermes Function Calling v1 | Apache-2.0 | train, incl. "no tool needed" |
+| Numeric reasoning | FinQA, ConvFinQA (MIT), TAT-QA (CC-BY-4.0) | permissive | train splits; test splits for evaluation |
+| General retention | permissive general SFT slice (e.g. `HuggingFaceTB/smoltalk`) | Apache-2.0 | ~1 k samples |
+| Sentiment, headlines, grounded QA | Financial PhraseBank, FiQA-SA, headline sets, FinanceBench | non-commercial / unclear | evaluation only |
 
-**v0.1 mix (~12 k supervised samples)**: 6 k Candela tool-trace turns (≥ 20 % multi-turn follow-ups, ≥ 10 % failure, unknown-company and personal-advice cases), 1.5 k Nemotron agentic finance, 1 k general function calling, 2.5 k numeric reasoning, 1 k general retention. Avoid FinGPT, Sujet-Finance-Instruct and finance-alpaca for training (license contamination or bundled test splits).
+v0.1 mix ≈ 12 k supervised samples: 6 k tool-trace turns (≥ 20 % multi-turn, ≥ 10 % failure/unknown/advice cases), 1.5 k agentic finance, 1 k function calling, 2.5 k numeric reasoning, 1 k retention. FinGPT, Sujet-Finance-Instruct and finance-alpaca are excluded (license contamination or bundled test splits).
 
-**Quality controls**: normalisation to OpenAI-style messages, exact and MinHash deduplication, 13-gram decontamination against every evaluation set, PII scrubbing, token-length caps, per-example source and license metadata, versioned manifests and data cards.
+**Candela Spark (pretraining)**: FineWeb-Edu, SmolLM-Corpus (Cosmopedia v2, FineWeb-Edu-dedup), English Wikipedia, FineMath, EDGAR-CORPUS 10-K sections, finance/economics pages selected from FineWeb-Edu. Raw news is excluded from early pretraining (noisy, time-sensitive, duplicative); dated market data belongs in tools, not weights.
 
-**Vaniras (later)**: once the owner provides an export or API, add the `vaniras` provider in the gateway and generate traces that interpret real P10/P50/P90 forecasts and Vaniras scores; the tool result shapes stay fixed, so the serving stack does not change.
+**Live market data**: Nasdaq symbol directory; price snapshot from a permissive public dataset with `asOf` labels; SEC EDGAR company facts once the owner approves a contact address for the SEC-required User-Agent; Vaniras when provided.
 
-## 6. Training on a shared laptop
+## 7. Training on a shared laptop
 
-- Budget: training peak ≤ 9 GB, inference ≤ 6 GB (pro 12B serving may take ~7.5 GB; admission control falls back to lite when headroom is short).
-- Resource guard: start only with budget + 3 GB available; pause (checkpoint, release) when available < 1.5 GB or swap grows > 1 GB in 5 minutes; resume after 10 minutes of recovery. All pauses are logged and shown in the Observatory.
-- `caffeinate -i nice -n 10`, background execution, checkpoints every 100–200 optimizer steps.
-- Order: lite first (fast, small), then pro. If the pro run cannot start within 12 hours because the machine is busy, release lite as v0.1 and keep the pro run queued.
+- Memory: Pro training ≤ 9 GB, Pro inference ≤ 8 GB (on demand), Spark ≤ 4 GB. Memory guard everywhere; nothing Candela does may push the owner's work into swap storms.
+- GPU lease (`contracts/gpu-lease.md`): live inference 100 > Pro training 80 > Spark milestone run 70 > evaluation/export 60 > Spark continuous 20.
+- Order requested by the owner: Spark M1 first (≈ 1–2 h of GPU time), then Candela Pro training; afterwards Spark keeps training in the background whenever the GPU is free.
+- Long jobs: `caffeinate -i nice -n 10`, background execution, checkpoints every 100–200 optimizer steps (Pro) or 10 minutes (Spark).
 
-## 7. Evaluation and release gates
+## 8. Evaluation and release gates
 
-Deterministic fast suite (≤ 30 min per model; thinking off; temperature 0): FPB 500 (macro-F1), FiQA-SA (weighted F1), headlines 500 (F1), FinQA/ConvFinQA/TAT-QA 300 each (numeric exact match with tolerance), FinanceBench 150, Candela `tool_use` 300 held-out conversations (tool-choice F1, argument validity, grounding rate = share of numbers in the answer found in tool outputs), held-out loss, IFEval 200 as a forgetting check.
+**Pro** (deterministic fast suite, ≤ 30 min, thinking off): FPB, FiQA-SA, headlines, FinQA/ConvFinQA/TAT-QA (numeric exact match with tolerance), FinanceBench, Candela `tool_use` (tool-choice F1, argument validity, grounding rate), held-out loss, IFEval as a forgetting check. Gate vs base: grounding and tool-choice F1 +10 points; no classic suite or IFEval drop above 3 points; manual review of 20 answers finds no fabricated numbers.
 
-Release gate for a tuned model vs its base: `tool_use` grounding and tool-choice F1 improve by ≥ 10 points; no classic suite drops by more than 3 points; IFEval drops by no more than 3 points; manual review of 20 random answers finds no fabricated numbers.
+**Spark**: per-source validation perplexity in bf16 and int4 (int4 gap < 1 % relative), small zero-shot suite with signal at this scale (LAMBADA, ARC-Easy, PIQA, HellaSwag subsets, BLiMP), finance cloze probes, fixed-seed samples; scaling-law fits across sizes.
 
-## 8. Product experience
+## 9. Product experience
 
-- Terminal (default): dense dark UI, amber "candle flame" accent, mono numbers, streaming reasoning and tool lines, financial cards (quote, candlesticks, indicators, fundamentals, forecast fan), watchlist, command palette, slash commands, replay mode, installable PWA.
-- Observatory (opened from the top bar): Architecture Tower with live telemetry, Fine-tune Field across checkpoints, Embedding Galaxy, Lab HUD; split view with the terminal on wide screens.
-- Disclaimers everywhere it matters; no personalized advice.
+- Terminal (default): dense dark UI, amber "candle flame" accent, mono numbers, streaming reasoning and tool lines, financial cards, watchlist, command palette, slash commands, replay mode, installable PWA.
+- Observatory (opened from the top bar): Architecture Tower with live telemetry, Fine-tune Field, Embedding Galaxy, Lab HUD, Spark Lab (live training, scaling, attention explorer); split view with the terminal on wide screens.
+- Disclaimers where they matter; no personalized advice.
 
-## 9. Security and privacy
+## 10. Security and privacy
 
-Secrets only in git-ignored `.env` files; pre-commit gitleaks and file-type guards; GitHub secret scanning and push protection; CORS allowlist; rate limits; bounded inputs; tool results treated as data; sanitized Markdown; internal routes on a non-tunnelled listener; worker token auth with constant-time comparison; no message content in logs; feedback transcripts stored only with explicit consent; owner email never sent to third parties.
+ADR 0008 is binding: single narrow ingress (cloudflared → loopback public listener only), no dangerous capabilities (no files, no exec, no client URLs, read-only tools), egress allowlist with private-address blocking, Seatbelt sandboxes for gateway/worker/cloudflared, rate limits and size/token caps, kill switch, no information leaks, supply-chain hygiene (lockfiles, `govulncheck`, `pip-audit`, safetensors only, pinned datasets), strict CSP and URL validation on the client, adversarial verification and a security review before every public exposure. Secrets only in git-ignored `.env` files; owner email never sent to third parties without explicit approval.
 
-## 10. Phases
+## 11. Phases
 
 | Batch | Sessions (parallel) | Depends on | Milestone |
 |---|---|---|---|
-| 1 | `p1-web`, `p1-gateway`, `p1-ml` | contracts | terminal shell live in replay mode; gateway with tools and snapshot; Lab pipeline, baselines, model selection |
-| 2 | `p2-train`, `p2-worker`, `p2-web` | batch 1 | Candela v0.1 models on Hugging Face; MLX worker; terminal wired to the gateway with rich cards |
-| 3 | `p3-observatory`, `p3-deploy`, `p3-nano` | batch 2 | Observatory live; site chatting with the pro model through the tunnel; real recordings; Candela-Nano trained from scratch with a scaling study |
+| 1 | `p1-web`, `p1-gateway`, `p1-ml`, `p1-spark` | contracts | terminal shell live in replay mode; gateway with tools and snapshot; Lab pipeline, Pro baseline and probe; Spark M1 and its daemon |
+| 2 | `p2-train`, `p2-worker`, `p2-web` | batch 1 | Candela Pro v0.1 on Hugging Face; MLX worker; terminal wired to the gateway with rich cards |
+| 3 | `p3-observatory`, `p3-deploy`, `p3-spark` | batch 2 | Observatory live; hardened public chat with Pro through the tunnel; real recordings; Spark scaling study and next size |
 | 4 | `p4-polish` | batch 3 | portfolio polish, README, case study, release v0.1.0 |
-| 5+ | `p5-train-v02`, `p5-edge-lite`, `p6-vaniras` | batch 4 / owner data | better data and preference tuning from feedback; in-browser lite model; Vaniras integration |
+| 5+ | `p5-pro-v02`, `p5-spark-grow`, `p6-vaniras` | owner data / batch 4 | better data and preference tuning from feedback; larger Spark sizes and Spark chat tuning; Vaniras integration |
 
 Each brief lives in `docs/plan/<phase>.md`; each session reports in `docs/status/<phase>.md`. The Director verifies every batch (status reports, commits, a smoke run) before starting the next.
 
-## 11. Optional owner actions (never blocking)
+## 12. Optional owner actions (never blocking)
 
-- `SEC_USER_AGENT` with a contact email to enable live SEC fundamentals.
-- A free key for an end-of-day price API for fresher data than the snapshot.
-- A stable hostname (named Cloudflare tunnel on an owner domain such as `candela.umitvice.com`, or Dev Tunnels login).
-- Installing the LaunchAgent so Candela goes live automatically at login.
+- Approve a contact address for the SEC User-Agent to enable live SEC fundamentals.
+- A free key for an end-of-day price API for fresher prices than the snapshot.
+- A stable hostname (named Cloudflare tunnel on an owner domain such as `candela.umitvice.com`, or a Dev Tunnels login).
+- Installing the live LaunchAgent so Candela goes online automatically at login.
 - Vaniras data export or API access.
 
-## 12. Risks
+## 13. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Machine busy (owner's 9 GB llama-server, other agents) | resource guard, lite-first ordering, pausable runs, admission control |
-| Gemma 4 12B exceeds memory | supervised-positions-only loss, fewer adapted layers, fallback to Qwen3-8B |
-| Quick tunnel instability | supervisor restarts, Gist discovery, replay mode, documented upgrade paths |
-| Stale snapshot data | `asOf` everywhere, Vaniras or keyed provider later |
+| Machine busy (owner's 9 GB llama-server, other agents) | memory guard, GPU lease, pausable runs, admission control, replay mode |
+| Gemma 4 12B training exceeds memory | supervised-positions-only loss, fewer adapted layers, shorter sequences |
+| Spark training unstable under QAT | short bf16 warm-up option, QK-norm, gradient clipping, int4-vs-bf16 gap monitoring, ablations at tiny scale |
+| Laptop sleep, shutdown or network loss | atomic exact-resume checkpoints, local data shards, LaunchAgent, `caffeinate` |
+| Public endpoint abuse | ADR 0008 layers, kill switch |
+| Quick tunnel instability | supervisor restarts, Gist discovery, replay mode, upgrade paths |
+| Stale snapshot data | `asOf` everywhere; SEC, Vaniras or keyed provider later |
 | Netlify credit exhaustion | ≤ 1 production deploy per phase, no Netlify builds, weights never on Netlify |
-| License contamination | permissive-only training sources, per-example license metadata, data card |
+| License contamination | permissive-only training sources, per-example license metadata, data cards |

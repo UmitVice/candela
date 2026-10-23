@@ -10,7 +10,8 @@ Candela answers questions about US-listed stocks by calling deterministic tools 
 
 | Component | Stack | Role |
 |---|---|---|
-| **Candela Lab** (`ml/`) | Python 3.14, MLX, Hugging Face datasets | Data curation, synthetic tool-use traces generated through the production tool layer, resource-guarded LoRA fine-tuning on Apple Silicon, evaluation, export (MLX, GGUF), publishing |
+| **Candela Pro** (`ml/`) | Python 3.14, MLX, Hugging Face datasets | Gemma 4 12B on Google's 4-bit QAT weights, fine-tuned with QLoRA: data curation, synthetic tool-use traces generated through the production tool layer, resource-guarded training on Apple Silicon, evaluation, export (MLX, GGUF LoRA), publishing |
+| **Candela Spark** (`spark/`) | Python 3.14, pure MLX | A language-model family built from scratch — tokenizer, Gemma-style architecture, quantization-aware (int4) pretraining that runs continuously on the laptop, growing from 35M parameters upward |
 | **Candela Worker** (`services/worker/`) | Python, MLX, FastAPI | GPU inference that dials out to the gateway, streams tokens and per-token interpretability telemetry, loads the model only on demand |
 | **Candela Gateway** (`services/gateway/`) | Go 1.27, SQLite | Public API, WebSocket/SSE chat streaming, tool orchestration, market data, rate limiting, worker routing and queueing |
 | **Candela Terminal** (`apps/web/`) | Angular 22 PWA, Tailwind CSS 4, Lightweight Charts, ECharts | Mobile-first, installable equity-research terminal |
@@ -48,7 +49,8 @@ When the Mac is offline the PWA plays real recorded sessions of the model. Desig
 apps/web            Angular PWA (Terminal + Observatory)
 services/gateway    Go API gateway
 services/worker     Python MLX inference worker
-ml                  Candela Lab (data, training, evaluation, export)
+ml                  Candela Pro lab (data, QLoRA training, evaluation, export)
+spark               Candela Spark (from-scratch, QAT-native model family)
 contracts           API, worker protocol, tool and artifact contracts
 deploy              Live setup on the Mac, Netlify and Hugging Face assets
 docs                Plans, ADRs, status reports, operations
