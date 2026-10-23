@@ -35,7 +35,7 @@ def _main(verbose: Annotated[bool, typer.Option("--verbose", "-v")] = False) -> 
 
 @app.command()
 def doctor(
-    model: Annotated[str, typer.Option(help="Model id or tier for the guard decision.")] = "lite",
+    model: Annotated[str | None, typer.Option(help="Model id for the guard decision.")] = None,
     budget_gb: Annotated[float | None, typer.Option(help="Override the memory budget.")] = None,
 ) -> None:
     """Print versions, Metal device, memory headroom and the resource-guard decision."""
@@ -44,26 +44,26 @@ def doctor(
     doctor_mod.run(budget_gb=budget_gb, model_id=model)
 
 
-@models_app.command("prepare")
-def models_prepare(
-    model: Annotated[str, typer.Argument(help="Model id or tier.")],
-    download_only: bool = False,
+@models_app.command("check")
+def models_check(
+    model: Annotated[str | None, typer.Argument(help="Model id; defaults to Candela Pro.")] = None,
 ) -> None:
-    """Download a base model (and convert it to MLX 4-bit when no prebuilt repo exists)."""
+    """Verify that the read-only base, reference and GGUF files of a model are present."""
     from candela_lab import models
 
-    models.prepare(model, download_only=download_only)
+    raise typer.Exit(0 if models.check(model) else 1)
 
 
 @data_app.command("fetch")
 def data_fetch(
     version: str = DEFAULT_DATA_VERSION,
     only: Annotated[list[str] | None, typer.Option(help="Restrict to these source ids.")] = None,
+    pin: Annotated[bool, typer.Option(help="Record sha256 of files that have no pinned hash yet.")] = False,
 ) -> None:
-    """Fetch every source of a dataset version into the shared caches."""
+    """Fetch every source (pinned revision, verified sha256) into the shared caches."""
     from candela_lab.data import build
 
-    build.fetch(version, only=only)
+    build.fetch(version, only=only, pin=pin)
 
 
 @data_app.command("build")
@@ -103,11 +103,14 @@ def traces_generate(
     seed: int = 7,
     out: Annotated[Path | None, typer.Option(help="Output JSONL path.")] = None,
     today: Annotated[str | None, typer.Option(help="Date rendered into the system prompt.")] = None,
+    split: Annotated[str, typer.Option(help="train | heldout (tool_use evaluation symbols)")] = "train",
 ) -> None:
     """Generate synthetic tool-use conversations through an executor."""
     from candela_lab.traces import generate
 
-    generate.run(n=n, executor=executor, gateway_url=gateway_url, seed=seed, out=out, today=today)
+    generate.run(
+        n=n, executor=executor, gateway_url=gateway_url, seed=seed, out=out, today=today, split=split
+    )
 
 
 @traces_app.command("validate")
@@ -163,7 +166,7 @@ def train_status(run_id: Annotated[str | None, typer.Argument()] = None) -> None
 
 @eval_app.command("run")
 def eval_run(
-    model: Annotated[str, typer.Argument(help="Model id or tier.")],
+    model: Annotated[str, typer.Argument(help="Model id (gemma-4-12b-qat) or smoke model.")],
     adapter: Annotated[Path | None, typer.Option(help="LoRA adapter directory.")] = None,
     suites: Annotated[list[str] | None, typer.Option("--suite", help="Restrict to these suites.")] = None,
     mode: Annotated[str, typer.Option(help="fast | full")] = "fast",

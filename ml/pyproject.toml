@@ -41,7 +41,7 @@ target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL"]
-ignore = ["PLR0913", "PLR0917", "PLW0603", "PLR2004", "PLR0912", "PLR0915", "PLR0911", "PLC0415"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003", "PLR0913", "PLR0917", "PLW0603", "PLR2004", "PLR0912", "PLR0915", "PLR0911", "PLC0415"]
 
 [tool.pyright]
 include = ["src"]

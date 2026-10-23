@@ -23,7 +23,7 @@ PACKAGES = [
 ]
 
 
-def run(budget_gb: float | None = None, model_id: str = "lite") -> bool:
+def run(budget_gb: float | None = None, model_id: str | None = None) -> bool:
     import mlx.core as mx
 
     console = Console()
@@ -56,6 +56,14 @@ def run(budget_gb: float | None = None, model_id: str = "lite") -> bool:
         mem.add_row(k, f"{v} GB" if isinstance(v, float) else str(v))
     console.print(mem)
 
+    from candela_lab import gpu_lease, models
+
+    models.check(model_id)
+    leases = gpu_lease.live_leases()
+    console.print(
+        "GPU leases: "
+        + (", ".join(f"{x.holder} (priority {x.priority}, pid {x.pid})" for x in leases) or "none live")
+    )
     spec = config.model(model_id)
     budget = budget_gb if budget_gb is not None else spec.train_budget_gb
     guard = resources.ResourceGuard(budget_gb=budget)

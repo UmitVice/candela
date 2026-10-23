@@ -1,0 +1,132 @@
+version: d0.1
+seed: 20261023
+validFraction: 0.04
+maxTokens: 2048
+tokenizerModel: gemma-4-12b-qat
+today: "2026-10-22"
+
+# Every download is pinned to a commit revision and verified against `sha256` (filled by `lab data fetch --pin`).
+# Only parquet, JSON, JSONL, CSV and zip-of-JSON files are read; dataset scripts and pickles are never executed.
+
+# Target number of supervised samples (one per assistant turn) per bucket. Buckets that cannot reach their
+# target keep everything that survives the filters; the manifest records both numbers.
+mix:
+  candela_traces: 6000
+  agentic_finance: 1500
+  function_calling: 1000
+  numeric_reasoning: 2500
+  classic_sentiment: 400
+  classic_headlines: 300
+  general_retention: 1000
+
+sources:
+  - id: candela-traces
+    bucket: candela_traces
+    kind: traces
+    license: apache-2.0
+    path: data/traces/d0.1
+  - id: nemotron-agentic-finance
+    bucket: agentic_finance
+    kind: hf
+    repo: nvidia/Nemotron-SFT-Agentic-Finance-v1
+    revision: 13f0aa9f04af54af991b6c249585dc59c5047938
+    files: [data/train.jsonl]
+    license: openmdw-1.1
+  - id: toolace
+    bucket: function_calling
+    kind: hf
+    repo: Team-ACE/ToolACE
+    revision: 6bda777c88d21e5a204703c1ee45597a8fa4f734
+    files: [data.json]
+    license: apache-2.0
+    weight: 0.5
+  - id: hermes-fc
+    bucket: function_calling
+    kind: hf
+    repo: NousResearch/hermes-function-calling-v1
+    revision: dae3e1d28cfbcf4b915c04ea1e072030529b4bda
+    files: [func-calling-singleturn.json, func-calling.json]
+    license: apache-2.0
+    weight: 0.5
+  - id: finqa
+    bucket: numeric_reasoning
+    kind: url
+    urls: {train: "https://raw.githubusercontent.com/czyssrs/FinQA/0f16e2867befa6840783e58be38c9efb9229d742/dataset/train.json"}
+    license: mit
+    weight: 0.4
+  - id: convfinqa
+    bucket: numeric_reasoning
+    kind: url
+    urls: {archive: "https://raw.githubusercontent.com/czyssrs/ConvFinQA/cf3eed2d5984960bf06bb8145bcea5e80b0222a6/data.zip"}
+    license: mit
+    weight: 0.3
+  - id: tatqa
+    bucket: numeric_reasoning
+    kind: hf
+    repo: next-tat/TAT-QA
+    revision: c96247f5077eac447f63527fd3dcfdc58bb56d6a
+    files: [tatqa_dataset_train.json]
+    license: cc-by-4.0
+    weight: 0.3
+  - id: twitter-fin-sentiment
+    bucket: classic_sentiment
+    kind: hf
+    repo: zeroshot/twitter-financial-news-sentiment
+    revision: ccbe24de388e287beb92dd393a335c376b350ac3
+    files: [sent_train.csv]
+    license: mit
+  - id: twitter-fin-topic
+    bucket: classic_headlines
+    kind: hf
+    repo: zeroshot/twitter-financial-news-topic
+    revision: acbc8af2a35ccf0916124efcbe9e6cf25f191012
+    files: [topic_train.csv]
+    license: mit
+  - id: smoltalk
+    bucket: general_retention
+    kind: hf
+    repo: HuggingFaceTB/smoltalk
+    revision: 5feaf2fd3ffca7c237fc38d1861bc30365d48ffa
+    files: [data/smol-constraints/train-00000-of-00001.parquet, data/smol-rewrite/train-00000-of-00001.parquet]
+    license: apache-2.0
+
+# Evaluation-only sets: never trained on, used for 13-gram decontamination of every training sample.
+eval:
+  - id: fpb
+    repo: ChanceFocus/flare-fpb
+    revision: 7de7bf7af4b987fce965cc324ce0d898da679e76
+    files: [data/test-00000-of-00001-8bd1e21c671fb670.parquet]
+    license: cc-by-nc-sa-3.0
+  - id: fiqa_sa
+    repo: ChanceFocus/flare-fiqasa
+    revision: 77696e4f87987a8de5f61a41fb67e8245e7c0804
+    files: [data/test-00000-of-00001-faca082021057ac8.parquet]
+    license: unclear (FiQA 2018 challenge data)
+  - id: headlines
+    repo: ChanceFocus/flare-headlines
+    revision: d8a188f96866372227e1ef9f6fd6230040d3fe75
+    files: [data/test-00000-of-00001-2a1cddfd1b6bd5cb.parquet]
+    license: cc-by-sa-3.0 (Gold news headlines)
+  - id: finqa
+    url: "https://raw.githubusercontent.com/czyssrs/FinQA/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json"
+    license: mit
+  - id: convfinqa
+    repo: ChanceFocus/flare-convfinqa
+    revision: ad7aa0c6910a0814e22236423ddc4420abec5b79
+    files: [data/test-00000-of-00001-57f4515ba08ff7cc.parquet]
+    license: mit
+  - id: tatqa
+    repo: next-tat/TAT-QA
+    revision: c96247f5077eac447f63527fd3dcfdc58bb56d6a
+    files: [tatqa_dataset_test_gold.json]
+    license: cc-by-4.0
+  - id: financebench
+    repo: PatronusAI/financebench
+    revision: e04404e3a97f69f79c14d42f24981a1c9c3bcd18
+    files: [financebench_merged.jsonl]
+    license: cc-by-nc-4.0
+  - id: ifeval
+    repo: google/IFEval
+    revision: 966cd89545d6b6acfd7638bc708b98261ca58e84
+    files: [ifeval_input_data.jsonl]
+    license: apache-2.0

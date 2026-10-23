@@ -1,0 +1,21 @@
+{
+  "hf:ChanceFocus/flare-convfinqa@ad7aa0c6910a0814e22236423ddc4420abec5b79/data/test-00000-of-00001-57f4515ba08ff7cc.parquet": "cd863f31f4d596a0e2e6ffea260f142ad3f2a424eff8e046cc861c4769e6ce94",
+  "hf:ChanceFocus/flare-fiqasa@77696e4f87987a8de5f61a41fb67e8245e7c0804/data/test-00000-of-00001-faca082021057ac8.parquet": "b8eb70820550189531900516fbac4123dae2b5d69db1b9aac6a84c2137c8bb12",
+  "hf:ChanceFocus/flare-fpb@7de7bf7af4b987fce965cc324ce0d898da679e76/data/test-00000-of-00001-8bd1e21c671fb670.parquet": "fd09993da90d1b0b86f079754623468129f354f187f42f4941d1473562dfcc92",
+  "hf:ChanceFocus/flare-headlines@d8a188f96866372227e1ef9f6fd6230040d3fe75/data/test-00000-of-00001-2a1cddfd1b6bd5cb.parquet": "84775bec089b612517f20ff450ccd3448c4de9a9d2c9d05fd416b95f47ec3614",
+  "hf:HuggingFaceTB/smoltalk@5feaf2fd3ffca7c237fc38d1861bc30365d48ffa/data/smol-constraints/train-00000-of-00001.parquet": "3369eaff911d3511ee21561a3b8607e1acfd773a6ade80f4759490ffdcce7ba4",
+  "hf:HuggingFaceTB/smoltalk@5feaf2fd3ffca7c237fc38d1861bc30365d48ffa/data/smol-rewrite/train-00000-of-00001.parquet": "12c7df2f0ec53fa35c329c1d10243cbb744bb04b6c52823db8e464835747ccba",
+  "hf:NousResearch/hermes-function-calling-v1@dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling-singleturn.json": "fb2df9fe3f295dfd65b223c2dbf04d6b90006357d737f8f8927749f0bea09527",
+  "hf:NousResearch/hermes-function-calling-v1@dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling.json": "769478035a886678d525d057ea66e3fd1e247f43e35c8d6d7cc866e080b6742b",
+  "hf:PatronusAI/financebench@e04404e3a97f69f79c14d42f24981a1c9c3bcd18/financebench_merged.jsonl": "7a1c81789e0fd2f1c37057a7ec0097756d726b05e7228e68e57db8e18c54fd0b",
+  "hf:Team-ACE/ToolACE@6bda777c88d21e5a204703c1ee45597a8fa4f734/data.json": "ba12c083fca7e8da48c67ad5b895e495447da7c66e39a2e19742c082e6cb537e",
+  "hf:google/IFEval@966cd89545d6b6acfd7638bc708b98261ca58e84/ifeval_input_data.jsonl": "6a85310ca8ce15eff755aa08a3a4ff931c7e273e7515ebb3c492ea85fd8288f2",
+  "hf:next-tat/TAT-QA@c96247f5077eac447f63527fd3dcfdc58bb56d6a/tatqa_dataset_test_gold.json": "15763f73a9839009d148d35ab3371f78fc6dc67bbdd95547bcd3ecb550f52a08",
+  "hf:next-tat/TAT-QA@c96247f5077eac447f63527fd3dcfdc58bb56d6a/tatqa_dataset_train.json": "c7bf8eb0c757e57ef3db6c6146dd7e487100dac1e37e66a349813ddc4187cd65",
+  "hf:nvidia/Nemotron-SFT-Agentic-Finance-v1@13f0aa9f04af54af991b6c249585dc59c5047938/data/train.jsonl": "9f9d018aac68bb8c28ec650b2ae5a2617568cc4c86bcf1c672a7a77b37c4cb87",
+  "hf:zeroshot/twitter-financial-news-sentiment@ccbe24de388e287beb92dd393a335c376b350ac3/sent_train.csv": "71aa99d0d37feced03c999ec23b5b25302c92f39d69b6acb0a37aa076c5420e8",
+  "hf:zeroshot/twitter-financial-news-topic@acbc8af2a35ccf0916124efcbe9e6cf25f191012/topic_train.csv": "63b9ea8183728dd5ddc6a57289341556509ddc0a8d037616519319a316b54490",
+  "url:https://raw.githubusercontent.com/czyssrs/ConvFinQA/cf3eed2d5984960bf06bb8145bcea5e80b0222a6/data.zip": "d764271fae60d81b62e6d58dfc481807ebc8cfbcd633811241723c4a2101072a",
+  "url:https://raw.githubusercontent.com/czyssrs/FinQA/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json": "831dbfb2e785dbc227f895ce3f24046433467aec67b09db2bd6ac7692a8a30dc",
+  "url:https://raw.githubusercontent.com/czyssrs/FinQA/0f16e2867befa6840783e58be38c9efb9229d742/dataset/train.json": "49f237eb9779b569473b26b08048867d04635a7cc39ad6a7a5664c55bb428db6"
+}
