@@ -140,8 +140,8 @@ def serve_check(run_id: str) -> dict[str, Any]:
         raise FileNotFoundError("QAT GGUF base or converted LoRA missing")
     guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb)
     result: dict[str, Any] = {}
+    guard.wait_for_headroom(what="llama-server lora check")
     with gpu_lease.Lease("lab-export", purpose=f"llama-server --lora check {run_id}"):
-        guard.wait_for_headroom(what="llama-server lora check")
         log_path = rd / "export" / "llama-server.log"
         cmd = [
             "llama-server",
