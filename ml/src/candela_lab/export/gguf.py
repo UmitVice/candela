@@ -138,7 +138,7 @@ def serve_check(run_id: str) -> dict[str, Any]:
     lora = rd / "export" / "candela-pro-lora-f16.gguf"
     if not base or not Path(base).exists() or not lora.exists():
         raise FileNotFoundError("QAT GGUF base or converted LoRA missing")
-    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb)
+    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb, policy=resources.PRO_POLICY)
     result: dict[str, Any] = {}
     with gpu_lease.Lease(
         "lab-export", purpose=f"llama-server --lora check {run_id}", state="waiting"

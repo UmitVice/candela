@@ -66,7 +66,7 @@ def run(budget_gb: float | None = None, model_id: str | None = None) -> bool:
     )
     spec = config.model(model_id)
     budget = budget_gb if budget_gb is not None else spec.train_budget_gb
-    guard = resources.ResourceGuard(budget_gb=budget)
+    guard = resources.ResourceGuard(budget_gb=budget, policy=resources.PRO_POLICY)
     decision = guard.start_decision()
     verdict = "[green]START[/green]" if decision.ok else "[yellow]WAIT[/yellow]"
     console.print(

@@ -412,7 +412,7 @@ def run(
     _write_json(rd / "config.json", {**cfg.raw, "simulatePauseAt": simulate_pause_at or [], "probe": probe})
     spec = config.model(cfg.model_id)
     budget = float(cfg.get("memory", {}).get("budgetGb", spec.train_budget_gb))
-    guard = resources.ResourceGuard(budget_gb=budget, pause_file=rd / "PAUSE")
+    guard = resources.ResourceGuard(budget_gb=budget, policy=resources.PRO_POLICY, pause_file=rd / "PAUSE")
     guard.install_signal_handler()
     guard.simulate_pause_at(simulate_pause_at or [])
     holder = "lab-train"

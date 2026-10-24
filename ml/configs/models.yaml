@@ -59,7 +59,7 @@ models:
       dropout: 0.05
       numLayers: 16
       keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj, mlp.gate_proj, mlp.up_proj, mlp.down_proj]
-    memory: {trainBudgetGb: 9.0, inferenceBudgetGb: 8.0}
+    memory: {trainBudgetGb: 10.5, inferenceBudgetGb: 8.0}
     adapters:
       merge: never
       serving: mlx

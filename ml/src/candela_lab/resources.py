@@ -151,6 +151,13 @@ class GuardPolicy:
     poll_sec: float = 15.0
     max_backoff_sec: float = 300.0
     sample_every_sec: float = 5.0
+    start_available_gb: float | None = None
+    pressure_only: bool = False
+
+
+# Owner decision 2026-10-23 for Candela Pro training, evaluation and export: start or resume at ≈ 11 GB available
+# and pause only when macOS reports memory pressure (warn/critical), resuming after 2 minutes back at normal.
+PRO_POLICY = GuardPolicy(start_available_gb=11.0, pressure_only=True, recover_sec=120.0)
 
 
 @dataclass
@@ -213,6 +220,8 @@ class ResourceGuard:
         return current - min(window) if window else 0.0
 
     def required_start_gb(self) -> float:
+        if self.policy.start_available_gb is not None:
+            return self.policy.start_available_gb
         return self.budget_gb + self.policy.start_headroom_gb
 
     def start_decision(self) -> GuardDecision:
@@ -221,13 +230,13 @@ class ResourceGuard:
         foreign = foreign_training()
         if foreign:
             return GuardDecision(False, f"foreign training running (pid {foreign[0][0]})", snap)
-        if snap.pressure == "critical":
-            return GuardDecision(False, "memory pressure critical", snap)
+        if snap.pressure == "critical" or (self.policy.pressure_only and snap.pressure == "warn"):
+            return GuardDecision(False, f"memory pressure {snap.pressure}", snap)
         if snap.available_gb < need:
             return GuardDecision(
                 False, f"available {snap.available_gb:.1f} GB < required {need:.1f} GB", snap
             )
-        if self.swap_growth_gb() > self.policy.swap_growth_gb:
+        if not self.policy.pressure_only and self.swap_growth_gb() > self.policy.swap_growth_gb:
             return GuardDecision(False, f"swap grew {self.swap_growth_gb():.2f} GB in window", snap)
         return GuardDecision(True, f"available {snap.available_gb:.1f} GB >= required {need:.1f} GB", snap)
 
@@ -269,6 +278,10 @@ class ResourceGuard:
             foreign = foreign_training()
             if foreign:
                 return GuardDecision(False, f"foreign training running (pid {foreign[0][0]})", snap)
+        if self.policy.pressure_only:
+            if snap.pressure in ("warn", "critical"):
+                return GuardDecision(False, f"memory pressure {snap.pressure}", snap)
+            return GuardDecision(True, "ok", snap)
         if snap.available_gb < self.policy.pause_below_gb:
             return GuardDecision(
                 False, f"available {snap.available_gb:.2f} GB < {self.policy.pause_below_gb} GB", snap
@@ -292,13 +305,16 @@ class ResourceGuard:
         healthy_since: float | None = None
         while True:
             snap = self.sample(force=True)
-            swap_ok = snap.pressure == "normal" or self.swap_growth_gb() <= self.policy.swap_growth_gb
-            healthy = (
-                not foreign_training()
-                and snap.available_gb >= need
-                and snap.pressure != "critical"
-                and swap_ok
-            )
+            if self.policy.pressure_only:
+                healthy = not foreign_training() and snap.available_gb >= need and snap.pressure == "normal"
+            else:
+                swap_ok = snap.pressure == "normal" or self.swap_growth_gb() <= self.policy.swap_growth_gb
+                healthy = (
+                    not foreign_training()
+                    and snap.available_gb >= need
+                    and snap.pressure != "critical"
+                    and swap_ok
+                )
             now = time.time()
             if healthy:
                 healthy_since = healthy_since or now

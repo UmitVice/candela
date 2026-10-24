@@ -265,7 +265,7 @@ def run(
     spec = config.model(model_id)
     chosen = suites or SUITES
     sizes = SIZES[mode]
-    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb)
+    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb, policy=resources.PRO_POLICY)
     _neighbourly_wired_limit()
     started = time.time()
     with gpu_lease.Lease("lab-eval", purpose=f"eval {label or spec.id}", state="waiting") as lease:

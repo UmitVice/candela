@@ -1,6 +1,6 @@
 # 0003 — Candela Pro: Gemma 4 12B QAT with QLoRA on Apple Silicon
 
-- Status: accepted (probe numbers filled in by `p1-ml`)
+- Status: accepted (probe numbers and guard settings filled in by `p1-ml`, 2026-10-24)
 - Date: 2026-10-23 (revised the same day by owner decision)
 
 ## Context
@@ -27,7 +27,9 @@ Measured by `p1-ml` on 2026-10-23 (Apple M5 Pro, 24 GB, mlx 0.32.4 / mlx-lm 0.32
 | LoRA rank 16, top 16 layers (32–47, 21.9 M trainable) | 10.46 GB | 332 | 3 687 / 3 687 tool-call turns render and parse back exactly (Gemma 4 template + mlx-lm `gemma4` parser) | single-step peaks: 9.45 GB @1 024, 12.50 GB @4 096 |
 | LoRA rank 16, top 24 layers (24–47, 32.8 M trainable) | 10.77 GB | 271 | same template | single-step peak 13.04 GB @4 096 |
 
-No configuration that trains on realistic sequence lengths stays ≤ 9 GB: the frozen base already takes 7.44 GB and activation memory (attention backward) grows with sequence length, not with the number of supervised positions. **Chosen: rank 16 on the top 16 layers at `max_seq_length` 2 048 with a 10.5 GB training budget**, started only when ≥ 13.5 GB is available (budget + 3 GB). The 24-layer variant costs only +0.3 GB but ~18 % throughput; `p2-train` may widen it. 4 096-token training (≥ 12.5 GB) is too heavy for the shared machine; see ADR 0400.
+No configuration that trains on realistic sequence lengths stays ≤ 9 GB: the frozen base already takes 7.44 GB and activation memory (attention backward) grows with sequence length, not with the number of supervised positions. **Chosen: rank 16 on the top 16 layers at `max_seq_length` 2 048 with a 10.5 GB training budget** (`trainBudgetGb` in `ml/configs/models.yaml`). The 24-layer variant costs only +0.3 GB but ~18 % throughput; `p2-train` may widen it. 4 096-token training (≥ 12.5 GB) is too heavy for the shared machine; see ADR 0400.
+
+Guard settings for Candela Pro training, evaluation and export (owner decision, 2026-10-23: "start Gemma training at about 11 GB free and pause only when macOS reports memory pressure"): start or resume when ≥ 11 GB is available (free + inactive + purgeable + speculative pages); pause — checkpoint and release the model — only when the kernel memory-pressure level (`kern.memorystatus_vm_pressure_level`) is warn or critical, not on swap growth alone; resume after the level has been normal for 2 minutes with ≥ 11 GB available. GPU lease reservations (`contracts/gpu-lease.md` v1.1) and the foreign-training check stay in force (`candela_lab.resources.PRO_POLICY`).
 
 ## Consequences
 
