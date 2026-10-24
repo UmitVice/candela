@@ -198,6 +198,13 @@ def numeric_answer(rationale_lines: list[str], answer: str, rng: random.Random) 
     return f"Step by step:\n{steps}\n\n{closer}"
 
 
+def numeric_answer_concise(rationale_lines: list[str], answer: str, rng: random.Random) -> str:
+    """The format the eval prompts ask for (d0.2): at most two calculation lines, then 'Answer: <number>'."""
+    closer = rng.choice(["Answer: {a}", "Answer: {a}", "Answer: **{a}**"]).format(a=answer)
+    lines = rationale_lines[-2:]
+    return "\n".join([*lines, closer]) if lines else closer
+
+
 def numeric_question(context: str, question: str, rng: random.Random) -> str:
     return f"{rng.choice(NUMERIC_INTROS)}\n\n{context}\n\nQuestion: {question.strip()}"
 

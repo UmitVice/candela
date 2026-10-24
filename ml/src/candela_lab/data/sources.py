@@ -104,6 +104,8 @@ def fetch_source(src: dict[str, Any], pin: bool = False) -> list[Path]:
         return [hf_file(src["repo"], f, src["revision"], pin) for f in src["files"]]
     if kind == "url":
         return [url_file(u, pin) for u in src["urls"].values()]
+    if kind == "local":
+        return [ML_DIR / f for f in src["files"] if (ML_DIR / f).exists()]
     if kind == "traces":
         root = ML_DIR / src["path"]
         return sorted(root.glob("*.jsonl")) if root.exists() else []
@@ -123,6 +125,13 @@ def load_traces(src: dict[str, Any], files: list[Path], rng: random.Random) -> I
             }
             meta["executor"] = row.get("meta", {}).get("executor", "unknown")
             yield {"messages": row["messages"], "tools": row["tools"], "meta": meta}
+
+
+def load_local(src: dict[str, Any], files: list[Path], rng: random.Random) -> Iterator[Example]:
+    for path in files:
+        for row in read_jsonl(path):
+            meta = {**row["meta"], "source": src["id"], "license": src["license"]}
+            yield {"messages": row["messages"], "meta": meta}
 
 
 def load_nemotron(src: dict[str, Any], files: list[Path], rng: random.Random) -> Iterator[Example]:
@@ -383,7 +392,8 @@ def load_convfinqa(src: dict[str, Any], files: list[Path], rng: random.Random) -
             ans = voice.fmt_number(float(a)) if isinstance(a, (int, float)) else str(a)
             prog = programs[k] if k < len(programs) else ""
             lines = voice.render_program(prog) if "(" in prog else []
-            msgs.append({"role": "assistant", "content": voice.numeric_answer(lines, ans, rng)})
+            compose = voice.numeric_answer_concise if src.get("voice") == "concise" else voice.numeric_answer
+            msgs.append({"role": "assistant", "content": compose(lines, ans, rng)})
         yield {"messages": msgs, "meta": _meta(src, row["id"], "numeric_qa_conversational")}
 
 
@@ -471,3 +481,9 @@ LOADERS: dict[str, Callable[[dict[str, Any], list[Path], random.Random], Iterato
     "twitter-fin-topic": load_twitter_topic,
     "smoltalk": load_smoltalk,
 }
+
+
+def loader_for(
+    src: dict[str, Any],
+) -> Callable[[dict[str, Any], list[Path], random.Random], Iterator[Example]]:
+    return load_local if src["kind"] == "local" else LOADERS[src["id"]]

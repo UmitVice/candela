@@ -4,6 +4,7 @@ from typing import Annotated
 import typer
 
 from candela_lab import log
+from candela_lab.paths import DATA_VERSION
 
 app = typer.Typer(
     help="Candela Lab: data, training, evaluation, export and publishing.", no_args_is_help=True
@@ -23,7 +24,7 @@ app.add_typer(export_app, name="export")
 app.add_typer(models_app, name="models")
 app.add_typer(observatory_app, name="observatory")
 
-DEFAULT_DATA_VERSION = "d0.1"
+DEFAULT_DATA_VERSION = DATA_VERSION
 
 
 @app.callback()
@@ -77,6 +78,16 @@ def data_build(
     from candela_lab.data import build
 
     build.build(version, tokenizer_model=tokenizer_model)
+
+
+@data_app.command("distill")
+def data_distill(
+    numeric: int = 1600, sentiment: int = 900, topic: int = 300, general: int = 800, seed: int = 20261024
+) -> None:
+    """Generate retention samples with the frozen base (guarded GPU job; resumable by chunk)."""
+    from candela_lab.data import distill
+
+    distill.run({"numeric": numeric, "sentiment": sentiment, "topic": topic, "general": general}, seed=seed)
 
 
 @data_app.command("stats")

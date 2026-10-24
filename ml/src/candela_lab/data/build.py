@@ -124,6 +124,8 @@ def build(version: str, tokenizer_model: str | None = None) -> dict[str, Any]:
     key_counter = 0
 
     for src in cfg["sources"]:
+        if src["bucket"] == "none":
+            continue
         rng = random.Random(f"{seed}:{src['id']}")
         files = sources.fetch_source(src)
         stats: dict[str, Any] = {
@@ -136,7 +138,7 @@ def build(version: str, tokenizer_model: str | None = None) -> dict[str, Any]:
             "dropped": Counter(),
             "kept": 0,
         }
-        loader = sources.LOADERS[src["id"]]
+        loader = sources.loader_for(src)
         for conv in loader(src, files, rng) if files else []:
             stats["conversations"] += 1
             issue = quality.quality_issue(conv)
