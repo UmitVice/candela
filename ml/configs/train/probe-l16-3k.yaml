@@ -1,0 +1,13 @@
+# 20-step QLoRA probe at 3072 tokens on the longest d0.1 samples: LoRA on the top 16 layers.
+model: gemma-4-12b-qat
+data: {version: d0.1, trainSubset: 1200, validSubset: 8}
+lora: {numLayers: 16}
+iters: 20
+gradAccumulation: 1
+batchSize: 1
+maxSeqLength: 3072
+gradCheckpoint: true
+headChunk: 64
+optimizer: {learningRate: 1.0e-4, warmup: 2, minLrRatio: 0.1, gradClip: 1.0}
+memory: {budgetGb: 11.5, cacheGb: 0.5}
+seed: 7

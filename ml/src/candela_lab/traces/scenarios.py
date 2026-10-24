@@ -60,6 +60,14 @@ ANALYSIS_ASKS = [
     "I'd like an analysis of {s} please",
     "Deep dive on {s}",
 ]
+QUICK_ASKS = [
+    "Quick take on {s}?",
+    "Give me a brief snapshot of {s}: price, momentum and outlook.",
+    "Short summary of how {s} is doing",
+    "TL;DR on {s}",
+    "{s} in a nutshell — where does it stand technically?",
+    "Fast check on {s} please, no fundamentals needed",
+]
 COMPARE_ASKS = [
     "Compare {a} and {b}",
     "{a} vs {b} — which has performed better?",
@@ -150,6 +158,25 @@ def analysis_script(symbol: str, history_range: str = "1Y") -> Callable[[compose
         if fund is None:
             notes.append(unavailable_note(errors(results[3:4]), "Fundamentals"))
         return compose.analysis(w, name_of(symbol), symbol, q, hist, ind, fund, fc, [n for n in notes if n])
+
+    return script
+
+
+def quick_analysis_script(symbol: str) -> Callable[[compose.Writer], TurnScript]:
+    """A full analysis does not fit the 2 048-token training window (ADR 0401); the quick variant teaches the same
+    sectioned, grounded answer from three tools."""
+
+    def script(w: compose.Writer) -> TurnScript:
+        calls: list[Call] = [
+            ("get_quote", {"symbol": symbol}),
+            ("get_technical_indicators", {"symbol": symbol}),
+            ("get_forecast", {"symbol": symbol}),
+        ]
+        results = yield calls
+        q, ind, fc = views(results)
+        if q is None and ind is None:
+            return failure_answer(w, symbol, errors(results))
+        return compose.analysis(w, name_of(symbol), symbol, q, None, ind, None, fc, [])
 
     return script
 
@@ -446,6 +473,7 @@ def off_topic_script(topic: str) -> Callable[[compose.Writer], TurnScript]:
 INTENT_WEIGHTS = {
     "analysis": 0.17,
     "analysis_follow_up": 0.17,
+    "quick_analysis": 0.10,
     "comparison": 0.09,
     "technical": 0.10,
     "fundamentals": 0.07,
@@ -469,6 +497,8 @@ def plan(rng: random.Random, symbols: list[str], fund_ok: Callable[[str], bool])
     m = mention(rng, s)
     if intent == "analysis":
         return Plan(intent, [s], [Turn(rng.choice(ANALYSIS_ASKS).format(s=m), analysis_script(s))])
+    if intent == "quick_analysis":
+        return Plan(intent, [s], [Turn(rng.choice(QUICK_ASKS).format(s=m), quick_analysis_script(s))])
     if intent == "analysis_follow_up":
         turns = [Turn(rng.choice(ANALYSIS_ASKS).format(s=m), analysis_script(s))]
         for text, kind in rng.sample(FOLLOW_UPS, k=rng.choice([1, 1, 2])):

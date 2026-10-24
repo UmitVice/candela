@@ -6,7 +6,7 @@ from typing import Any
 
 from candela_lab import config, log
 from candela_lab.data.common import stable_id, write_jsonl
-from candela_lab.paths import DATA_DIR, ML_DIR
+from candela_lab.paths import DATA_DIR, DATA_VERSION, ML_DIR
 from candela_lab.traces import compose, market, scenarios, validate
 from candela_lab.traces.executor import (
     Executor,
@@ -93,10 +93,10 @@ def run(
     ex = make_executor(executor, gateway_url, as_of)
     if split == "heldout":
         symbols = sorted(market.HELDOUT_SYMBOLS)
-        default_out = DATA_DIR / "eval" / "tool_use-d0.1.jsonl"
+        default_out = DATA_DIR / "eval" / f"tool_use-{DATA_VERSION}.jsonl"
     else:
         symbols = [s for s, *_ in market.UNIVERSE if s not in market.HELDOUT_SYMBOLS]
-        default_out = DATA_DIR / "traces" / "d0.1" / f"{executor}-{seed}.jsonl"
+        default_out = DATA_DIR / "traces" / DATA_VERSION / f"{executor}-{seed}.jsonl"
     target = out if out is not None else default_out
     if not target.is_absolute():
         target = ML_DIR / target

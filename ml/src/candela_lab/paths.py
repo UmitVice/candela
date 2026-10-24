@@ -1,5 +1,6 @@
 from pathlib import Path
 
+DATA_VERSION = "d0.2"
 ML_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = ML_DIR.parent
 CONTRACTS_DIR = REPO_ROOT / "contracts"
