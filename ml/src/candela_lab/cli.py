@@ -287,11 +287,21 @@ def publish(
     run_id: str,
     dry_run: Annotated[bool, typer.Option("--dry-run/--no-dry-run")] = True,
     out: Annotated[Path | None, typer.Option(help="Staging directory for rendered repos.")] = None,
+    base_report: Annotated[Path | None, typer.Option(help="Base eval report for the gate table.")] = None,
+    tuned_report: Annotated[Path | None, typer.Option(help="Tuned eval report for the gate table.")] = None,
+    experimental: Annotated[bool, typer.Option(help="Label the release as experimental.")] = False,
 ) -> None:
     """Render model and dataset cards and stage Hugging Face uploads (dry run by default)."""
     from candela_lab.publish import hub
 
-    hub.publish(run_id, dry_run=dry_run, out=out)
+    hub.publish(
+        run_id,
+        dry_run=dry_run,
+        out=out,
+        base_report=base_report,
+        tuned_report=tuned_report,
+        experimental=experimental,
+    )
 
 
 if __name__ == "__main__":

@@ -156,6 +156,12 @@ def export_run(run_id: str) -> Path:
     }
     if (out / "eval.json").exists():
         entry["files"]["eval"] = f"models/{model_id}/eval.json"
+    published = rd / "published.json"
+    if published.exists():
+        info = json.loads(published.read_text())
+        entry["status"] = "released"
+        entry["releasedAt"] = info["publishedAt"]
+        entry["huggingFace"] = {k: v for k, v in info["huggingFace"].items() if v}
     _dump(out / "entry.json", entry)
     _log.info("observatory artifacts exported", run_id=run_id, model_id=model_id, path=str(out))
     return out

@@ -1,53 +1,104 @@
 ---
 license: apache-2.0
-base_model: {{ base_model }}
-library_name: {{ library }}
-tags: [finance, equity-research, tool-use, lora, qlora, gemma4, mlx{% if library == "gguf" %}, gguf{% endif %}]
+base_model: {{ base_model if library == "mlx" else base_gguf }}
+library_name: {{ "mlx" if library == "mlx" else "gguf" }}
+pipeline_tag: text-generation
+tags: [finance, equity-research, tool-use, function-calling, lora, qlora, gemma4, qat{% if library == "mlx" %}, mlx{% else %}, gguf, llama.cpp{% endif %}{% if experimental %}, experimental{% endif %}]
 datasets: [{{ dataset_repo }}]
 language: [en]
 ---
 
-# {{ display_name }} — {{ artifact }}
+# {{ display_name }} {{ version }} — {{ artifact }}
 
-{{ display_name }} is the Candela Pro equity-research assistant: Gemma 4 12B on Google's QAT int4 weights with a QLoRA adapter trained locally on an Apple M5 Pro. The int4 base stays frozen and unmerged; this repository holds only the {{ artifact }}.
+{% if experimental -%}
+> **Experimental release.** This adapter did not pass every check of the Candela release gate (see *Evaluation*). The numbers below are reported as measured.
 
-- Base: [`{{ base_model }}`](https://huggingface.co/{{ base_model }}) (QAT int4, loaded unmodified)
-- Run: `{{ run_id }}` · {{ steps }} optimizer steps · dataset `{{ dataset_version }}` · LoRA rank {{ lora.rank }}, scale {{ lora.scale }}, layers {{ layers }}
-- Code: https://github.com/UmitVice/candela (`ml/`)
-{% if pilot %}
-> **Pilot artifact.** This adapter comes from a short pipeline-validation run and is not a release.
-{% endif %}
+{% endif -%}
+Candela Pro is the equity-research assistant of [Candela](https://github.com/UmitVice/candela): **Gemma 4 12B on Google's quantization-aware-trained (QAT) int4 weights plus a QLoRA adapter**, trained locally on a laptop. The int4 base stays frozen exactly as Google trained it and the adapter is never merged, so 4-bit is the default with the base's QAT quality intact. This repository holds only the {{ artifact }} ({{ "%.1f"|format(train.trainable / 1e6) }} M parameters); the base model is downloaded separately.
+
+- Base: [`{{ base_model }}`](https://huggingface.co/{{ base_model }}){% if library == "gguf" %} · GGUF base: [`{{ base_gguf }}`](https://huggingface.co/{{ base_gguf }}){% endif %}
+- Companion repos: [`{{ repos.adapter }}`](https://huggingface.co/{{ repos.adapter }}) (MLX) · [`{{ repos.gguf }}`](https://huggingface.co/{{ repos.gguf }}) (GGUF LoRA) · dataset [`{{ repos.dataset }}`](https://huggingface.co/datasets/{{ repos.dataset }})
+- Code, data pipeline and evaluation harness: https://github.com/UmitVice/candela (`ml/`), run `{{ run_id }}`
+
+## Intended use
+
+An educational equity-research assistant that answers questions about listed companies by **calling market tools** (`search_symbols`, `get_quote`, `get_price_history`, `get_technical_indicators`, `get_fundamentals`, `get_forecast`; schemas in [`contracts/tools.json`](https://github.com/UmitVice/candela/blob/main/contracts/tools.json)) and writing grounded Markdown answers with Snapshot, Trend & Momentum, Fundamentals, Outlook & Risks and Bottom line sections. It is meant to be served with the Candela system prompt ([`contracts/system-prompt.md`](https://github.com/UmitVice/candela/blob/main/contracts/system-prompt.md)) and a tool executor that returns real data. Thinking mode stays available but the adapter was trained with thinking off.
+
+**Not financial advice.** The model gives educational analysis only; it declines personalized buy/sell/hold advice and must not be used to make investment decisions.
+
 ## Usage
 
 {% if library == "gguf" -%}
+Download the QAT Q4 GGUF base (for example from [`{{ base_gguf }}`](https://huggingface.co/{{ base_gguf }})) and this LoRA, then run llama.cpp:
+
 ```bash
-llama-server -m gemma-4-12b-it-qat-q4_0.gguf --lora {{ files[0] }} --jinja
+llama-server -m gemma-4-12b-it-qat-q4_0.gguf --lora {{ files[0] }} --jinja -c 8192
 ```
+
+The adapter was converted from the MLX adapter (MLX → PEFT → `convert_lora_to_gguf.py` at llama.cpp `b9960`) and checked by loading it with `llama-server --lora` on the QAT Q4 GGUF (answers with LoRA scale 1 differ from scale 0). Tools are passed through the OpenAI-compatible `tools` field; llama.cpp renders them with Gemma 4's chat template.
 {%- else -%}
+The MLX base is Google's QAT checkpoint converted to MLX affine int4 with group size 32:
+
+```bash
+mlx_lm.convert --hf-path {{ base_model }} --mlx-path gemma-4-12b-it-qat-mlx-q4 -q --q-bits 4 --q-group-size 32
+hf download {{ repos.adapter }} --local-dir candela-pro-adapter
+mlx_lm.generate --model gemma-4-12b-it-qat-mlx-q4 --adapter-path candela-pro-adapter \
+  --prompt "What does an RSI of 75 usually indicate?" --max-tokens 200
+```
+
 ```python
 from mlx_lm import load, generate
-model, tokenizer = load("<path to Gemma 4 12B QAT MLX int4>", adapter_path="<this repo>")
-```
-{%- endif %}
 
-The model is trained to call the Candela market tools (`contracts/tools.json`) for every number and to answer with Snapshot, Trend & Momentum, Fundamentals, Outlook & Risks and Bottom line sections. It gives educational analysis, never personalized advice.
+model, tokenizer = load("gemma-4-12b-it-qat-mlx-q4", adapter_path="candela-pro-adapter")
+messages = [{"role": "system", "content": "<Candela system prompt>"}, {"role": "user", "content": "Analyze NVDA"}]
+prompt = tokenizer.apply_chat_template(messages, tools=TOOLS, add_generation_prompt=True, enable_thinking=False)
+print(generate(model, tokenizer, prompt=prompt, max_tokens=512))
+```
+
+Tool calls use Gemma 4's native syntax (`<|tool_call>call:get_quote{symbol:<|"|>NVDA<|"|>}<tool_call|>`); mlx-lm's `gemma4` tool parser reads them. Inference needs about 8 GB of unified memory.
+{%- endif %}
 
 ## Evaluation
 
+Deterministic suites (greedy decoding, thinking off, fixed seed), base = the same QAT int4 model without the adapter. `tool_use` runs on 300 held-out conversations whose tool results come from the real Candela gateway on the market snapshot, with symbols never seen in training.
+
 {% if eval_rows -%}
-| Suite | Metric | Base | Tuned | Δ |
-|---|---|---:|---:|---:|
+| Suite | Metric | n | Base | Candela Pro | Δ |
+|---|---|---:|---:|---:|---:|
 {% for r in eval_rows -%}
-| {{ r.name }} | {{ r.metric }} | {{ "%.3f"|format(r.base) }} | {{ "%.3f"|format(r.tuned) }} | {{ "%+.3f"|format(r.delta) }} |
+| {{ r.name }} | {{ r.metric }} | {{ r.n }} | {{ r.base|num }} | {{ r.tuned|num }} | {{ "%+.3f"|format(r.delta) }} |
 {% endfor %}
 {%- else -%}
 No evaluation comparison is available for this run yet.
 {%- endif %}
+{% if gate_rows %}
+### Release gate
 
-## Training data
+Tool-choice F1 and grounding must improve by 10 points (grounding: or halve the ungrounded share when the base is above 0.90, ADR 0403); no classic suite or IFEval may drop by more than 3 points. `±2σ` is two standard errors of an unpaired difference, a conservative noise scale for small suites. Result: **{{ "passed" if gate_passed else "not passed" }}**.
 
-Permissive sources only (see the [data card](https://github.com/UmitVice/candela/blob/main/ml/datacards/{{ dataset_version }}.md)); non-commercial benchmarks are used for evaluation only.
+| Check | Base | Tuned | Δ | ±2σ | Rule | Pass |
+|---|---:|---:|---:|---:|---|---|
+{% for r in gate_rows -%}
+| {{ r.check }} | {{ r.base|num }} | {{ r.tuned|num }} | {{ "n/a" if r.delta is none else "%+.3f"|format(r.delta) }} | {{ r.noise2se|num }} | {{ r.rule }} | {{ "n/a" if r["pass"] is none else ("yes" if r["pass"] else "no") }} |
+{% endfor %}
+{%- endif %}
+
+## Training
+
+- Method: QLoRA on the frozen QAT int4 base — LoRA rank {{ lora.rank }}, scale {{ lora.scale }}, dropout {{ lora.dropout }} on layers {{ layers }} ({{ train.modules|join(", ") }}), gradient checkpointing, prompt masking (one supervised assistant turn per sample) and a supervised-positions-only LM head (262k vocabulary).
+- Optimiser: AdamW, learning rate {{ train.lr }}, {{ train.warmup }}-step linear warm-up then cosine decay to {{ train.min_lr_ratio }}×, batch {{ train.batch }} × accumulation {{ train.accum }}, gradient clip 1.0, sequences up to {{ train.max_seq }} tokens.
+- Run: {{ train.steps }} optimizer steps ({{ train.epochs }} epochs over {{ train.train_examples }} samples), {{ "{:,}".format(train.tokens) }} tokens, {{ train.compute_h }} h of compute{% if train.wall_h %} over {{ train.wall_h }} h wall time{% endif %}, {{ train.tokens_per_sec }} tokens/s, peak {{ train.peak_mem_gb }} GB, {{ train.pauses }} resource-guard pauses (the trainer checkpoints and releases memory when the machine needs it).
+- Hardware: {{ hardware }}; MLX 0.32.4, mlx-lm 0.32.2.
+- Data `{{ dataset_version }}` ({{ train.train_examples }} training samples): {% for k, v in buckets.items() %}{{ k }} {{ v.selected }}{% if not loop.last %}, {% endif %}{% endfor %}. Tool-use traces were executed through the real Candela gateway on the market snapshot; classic-task and general retention answers were generated by the frozen base itself and kept only when correct or complete (self-distillation against forgetting). Data card: [`ml/datacards/{{ dataset_version }}.md`](https://github.com/UmitVice/candela/blob/main/ml/datacards/{{ dataset_version }}.md).
+
+## License
+
+The adapter is released under Apache-2.0, the license of Gemma 4. Training data licenses: {% for k, v in licenses.items() %}{{ k }} ({{ v }} samples){% if not loop.last %}, {% endif %}{% endfor %}; TAT-QA (CC-BY-4.0, Zhu et al. 2021) and FinQA/ConvFinQA (MIT, Chen et al. 2021/2022) provided retention prompts. Benchmarks with non-commercial or unclear terms (Financial PhraseBank, FiQA, FinanceBench, Gold headlines) were used for evaluation only and never trained on; every training sample was 13-gram decontaminated against them.
 
 ## Limitations
 
-Market numbers must come from tools at inference time; the model is not a source of prices or financials. Not financial advice.
+- Market numbers must come from tools at inference time; the model is not a source of prices or financials, and its knowledge of companies stops at the base model's cut-off.
+- Full five-tool analyses exceed the 2 048-token training window, so their final answers were learned from shorter sectioned answers (ADR 0401).
+- Synthetic traces have a regular style; real users phrase questions more variously.
+- Evaluation suites are small (n = 100–500); differences of a few points are within noise.
+- English only. Not financial advice.
