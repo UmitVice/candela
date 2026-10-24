@@ -31,7 +31,7 @@ def plan(run_id: str, out: Path) -> list[dict[str, Any]]:
     model_id = obs.get("modelId", run_id)
     version = obs.get("version", "dev")
     pilot = bool(cfg.get("pilot", False))
-    suffix = "-pilot" if pilot else ""
+    suffix = "-pilot" if pilot and "pilot" not in version else ""
     dataset_repo = f"{NAMESPACE}/candela-tool-traces"
     env = environment()
     common = {

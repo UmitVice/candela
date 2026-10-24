@@ -1,0 +1,385 @@
+{
+  "reportId": "candela-pro-pilot",
+  "modelId": "gemma-4-12b-qat",
+  "baseModel": "google/gemma-4-12B-it-qat-q4_0-unquantized",
+  "basePath": "/Users/umit/models/gemma-4-12b-it-qat-mlx-q4",
+  "adapter": "runs/pilot-candela-pro/adapter",
+  "mode": "fast",
+  "limit": null,
+  "datasetVersion": "d0.1",
+  "evalSeed": 1234,
+  "decoding": {
+    "temperature": 0.0,
+    "thinking": false
+  },
+  "evaluatedAt": "2026-10-24T01:13:42+00:00",
+  "durationSec": 2823.3,
+  "peakMemGb": 13.04,
+  "machine": "Apple M5 Pro \u00b7 arm64",
+  "suites": {
+    "fpb": {
+      "value": 0.7892903558084865,
+      "n": 300,
+      "details": {
+        "f1": 0.7892903558084865,
+        "accuracy": 0.8066666666666666,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": " the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: ( ADP News ) - Finnish handling systems provider Cargotec Oyj ( HEL : CGCBV ) announced on Friday it won orders worth EUR 10 million ( USD 13.2 m ) to deliver linkspans to Jordan , Morocco and Ireland .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        },
+        {
+          "prompt": "word: positive, negative or neutral.\n\nText: The world 's biggest magazine paper maker said the program to improve efficiency will include closing several of its least competitive mills and would cover all the company 's operations resulting in annual savings of some euro200 million US$ 240 million .",
+          "output": "Neutral",
+          "gold": "positive",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "ive or neutral.\n\nText: ST. PETERSBURG , Oct 14 ( PRIME-TASS ) -- Finnish tire producer Nokian Tyres plans to invest about 50 million euros in the expansion of its tire plant in the city of Vsevolozhsk in Russia 's Leningrad Region in 2011 , the company 's President Kim Gran told reporters Thursday .",
+          "output": "Neutral",
+          "gold": "positive",
+          "pred": "neutral"
+        },
+        {
+          "prompt": " exactly one word: positive, negative or neutral.\n\nText: - BEIJING XFN-ASIA - Hong Kong-listed Standard Chartered Bank said it has signed a China mobile phone dealer financing agreement with Nokia , making it the first foreign bank to offer financing to the country 's small and medium enterprise -LR",
+          "output": "Neutral",
+          "gold": "positive",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Finnish software developer Done Solutions Oyj said its net profit increased to 3.5 mln euro ( $ 4.6 mln ) in 2006 from 2.3 mln euro ( $ 3.0 mln ) in 2005 .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        }
+      ],
+      "seconds": 48.9,
+      "name": "Financial PhraseBank",
+      "metric": "macro_f1",
+      "higherIsBetter": true
+    },
+    "fiqa_sa": {
+      "value": 0.6967585044341794,
+      "n": 235,
+      "details": {
+        "f1": 0.6967585044341794,
+        "accuracy": 0.6212765957446809,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: $BBRY Actually lost .03c per share if U incl VZ as no debt and 3.1 in Cash.",
+          "output": "Neutral",
+          "gold": "negative",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Legal & General share price: Finance chief to step down",
+          "output": "Neutral",
+          "gold": "negative",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Kingfisher share price slides on cost to implement new strategy",
+          "output": "Negative",
+          "gold": "negative",
+          "pred": "negative"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: EasyJet Dismisses Lufthansa Low-Cost Plan in Contest for Germany",
+          "output": "Neutral",
+          "gold": "negative",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Tesco share price tumbles after negative broker note",
+          "output": "negative",
+          "gold": "negative",
+          "pred": "negative"
+        }
+      ],
+      "seconds": 31.6,
+      "name": "FiQA sentiment",
+      "metric": "weighted_f1",
+      "higherIsBetter": true
+    },
+    "headlines": {
+      "value": 0.752248235234371,
+      "n": 300,
+      "details": {
+        "f1": 0.752248235234371,
+        "accuracy": 0.76,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "Look for indications that the price of gold is increasing.. Is there a mention of a Direction Up in relation to gold in the news headline? Please answer with Yes or No.\nText: Gold climbs to 2-1/2 week highs on views Fed will hold off on rates\n\nReply with exactly one word: Yes or No.",
+          "output": "Yes",
+          "gold": "yes",
+          "pred": "yes"
+        },
+        {
+          "prompt": "Consider whether the headline mentions the price of gold.. Is the news headline discussing a Price or Not related to gold? Please respond with Yes or No.\nText: gold monetisation scheme to be revamped this week: report\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "no",
+          "pred": "no"
+        },
+        {
+          "prompt": "Consider if the headline compares gold with other assets.. Is there a Asset Comparision in the gold commodity market indicated in the news headline? Please answer Yes or No.\nText: gold futures edge lower but remain supported by weaker dollar\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "yes",
+          "pred": "no"
+        },
+        {
+          "prompt": "Consider if the headline compares gold with other assets.. Does the news headline indicate a Asset Comparision in the context of gold commodities? Your answer should be Yes or No.\nText: gold, silver settle higher on greece turmoil\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "yes",
+          "pred": "no"
+        },
+        {
+          "prompt": "Look for indications that the price of gold is increasing.. Does the news headline indicate a Direction Up in the context of gold commodities? Your answer should be Yes or No.\nText: gold rate: check out latest gold price, trends and market outlook\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "no",
+          "pred": "no"
+        }
+      ],
+      "seconds": 44.8,
+      "name": "Gold headlines",
+      "metric": "weighted_f1",
+      "higherIsBetter": true
+    },
+    "finqa": {
+      "value": 0.59,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": ", and were reflected as an increase to common stock in the consolidated statements of shareholders 2019 equity. .\n\nQuestion: what was the greatest provision for income taxes , in millions?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "829 \u2212 419 = 410\n\nAnswer: 410",
+          "gold": "829.0",
+          "pred": 410.0,
+          "ok": false
+        },
+        {
+          "prompt": "es of company stock. .\n\nQuestion: assuming the same level of settlements as in fiscal 2007 , what would be the ending balance at march 31 2008 in millions for unrecognized tax benefits?\\\\n\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "224 - 56 = 168\nAnswer: 168",
+          "gold": "112.0",
+          "pred": 168.0,
+          "ok": false
+        },
+        {
+          "prompt": "transfer agent american stock transfer & trust company , 59 maiden lane , new york , ny 10038 , is our stock transfer agent. .\n\nQuestion: did abiomed outperform the nasdaq composite index?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "162.45 \u2212 127.66 = 34.79\n34.79 > 0\n\nAnswer: 1",
+          "gold": "yes",
+          "pred": 1.0,
+          "ok": false
+        },
+        {
+          "prompt": " 128 |\n| total future minimum lease payments | $ 4218 |\n\nQuestion: what is the percentage increase in base rent for danvers , massachusetts facility from the period 2010-2014 to 2014-2016?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "(66,000-64,350)/64,350 = 1,650/64,350 = 0.02564\n\nAnswer: 2.6%",
+          "gold": "0.02564",
+          "pred": 2.6,
+          "ok": false
+        },
+        {
+          "prompt": "t any material settlements in fiscal 2009 but it is inherently uncertain to determine. .\n\nQuestion: what is the net change in the gross liability for unrecognized tax benefits during 2008?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "139,549 \u2212 201,808 = -62,259\nAnswer: -62,259",
+          "gold": "-62259.0",
+          "pred": -62259.0,
+          "ok": true
+        }
+      ],
+      "seconds": 284.6,
+      "name": "FinQA",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "convfinqa": {
+      "value": 0.72,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": " pacific . this business provides card payment processing services to merchants in the asia-pacific region . the .\nConversations: \nq0: what is the value of goodwill? {answer0}\nQuestion: what is the value of customer-related intangible assets?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "4,091 thousand.\n\n**Answer: 4,091 thousand**",
+          "gold": "4091.0",
+          "pred": 4091.0,
+          "ok": true
+        },
+        {
+          "prompt": "es card payment processing services to merchants in the asia-pacific region . the .\nConversations: \nq0: what is the value of goodwill? {answer0}\nq1: what is the value of customer-related intangible assets? {answer1}\nQuestion: what is the sum?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "13,536 + 4,091 = 17,627.\n\n**Answer: 17,627**",
+          "gold": "17627.0",
+          "pred": 17627.0,
+          "ok": true
+        },
+        {
+          "prompt": "onsolidated and all of the entity 2019s assets , liabilities , and .\nConversations: \nq0: what is the aaa interest rate in 2009? {answer0}\nq1: what is it in 2008? {answer1}\nq2: what is the sum? {answer2}\nQuestion: what is the average per year?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "14 + 19 = 33.\n33 \u00f7 2 = 16.5.\n\n**Answer: 16.5**",
+          "gold": "16.5",
+          "pred": 16.5,
+          "ok": true
+        },
+        {
+          "prompt": "nd what was it in 2006? {answer1}\nq2: what was, then, the change over the year? {answer2}\nq3: what was the rent expense in 2006? {answer3}\nQuestion: and how much does that change represent in relation to this 2006 rent expense, in percentage?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "106.4 \u2212 81.5 = 24.9.\n\n24.9 \u00f7 81.5 = 0.305521.\n\nAnswer: 31%",
+          "gold": "0.30552",
+          "pred": 31.0,
+          "ok": false
+        },
+        {
+          "prompt": "onversations: \nq0: what was the increase in the operating profit for space systems from 2011 to 2012? {answer0}\nq1: and what was that operating profit in 2011? {answer1}\nQuestion: what, then, is that increase as a portion of this 2011 amount?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "1,083 \u2212 1,063 = 20.\n\nSo the answer is 20 \u00f7 1,063 = 0.0188.\n\n**Answer: 0.0188**",
+          "gold": "0.01881",
+          "pred": 0.0188,
+          "ok": true
+        }
+      ],
+      "seconds": 456.5,
+      "name": "ConvFinQA",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "tatqa": {
+      "value": 0.85,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "1,252 |\n| Other | 61,908 | 46,616 | 15,292 |\n| Total | $880,737 | $756,529 | $124,208 |\n\nQuestion: What is the change in Personnel costs, including teammate benefits between 2018 and 2019?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "684,837 - 593,955 = 90,882\nAnswer: 90,882",
+          "gold": "90882",
+          "pred": 90882.0,
+          "ok": true
+        },
+        {
+          "prompt": "otes receivable and other non-current assets | $406.4 | $962.6 |\n\nQuestion: What was long-term prepaid ground rent as a percentage of notes receivable and other non-current assets in 2018?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "607.5 \u00f7 962.6 = 0.631\n\nAnswer: 63.1%",
+          "gold": "63.11",
+          "pred": 63.1,
+          "ok": true
+        },
+        {
+          "prompt": "mon share attributable to common shareholders - basic and diluted | $ (0.29) | $ (0.73) | $ 1.07 |\n\nQuestion: What was the increase / (decrease) in the net income (loss) from 2018 to 2019?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "-19,931 - (-50,571) = 30,640\nAnswer: 30,640",
+          "gold": "30640",
+          "pred": 30640.0,
+          "ok": true
+        },
+        {
+          "prompt": " 0 | 0 | 0 | 100 |\n| Manoj Shetty | 241,535 | 150 | 0 | 0 | 0 | 0 | 100 |\n\nQuestion: What is the total percentage net sales allocated under the 2019 Plan for Barry Litwin and Thomas Clark?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "20 + 0 = 20\n\nAnswer: 20",
+          "gold": "20",
+          "pred": 20.0,
+          "ok": true
+        },
+        {
+          "prompt": "1.11) | $(0.40) | $0.50 |\n| Earnings (loss) per share\u2014diluted | $(1.11) | $(0.40) | $0.49 |\n\nQuestion: What was the change in Weighted average number of shares\u2014basic between 2017 and 2018?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "47,880 \u2212 48,153 = -273\nAnswer: -273",
+          "gold": "-273",
+          "pred": -273.0,
+          "ok": true
+        }
+      ],
+      "seconds": 420.1,
+      "name": "TAT-QA (arithmetic)",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "tool_use": {
+      "value": 0.8714285714285713,
+      "n": 40,
+      "details": {
+        "toolChoicePrecision": 0.8652482269503546,
+        "toolChoiceRecall": 0.8776978417266187,
+        "toolChoiceF1": 0.8714285714285713,
+        "argumentValidity": 1.0,
+        "malformedCalls": 0,
+        "noToolAccuracy": 1.0,
+        "groundingRate": 0.9805696938389246,
+        "callTurns": 53,
+        "answerTurns": 52,
+        "ungroundedExamples": [
+          [
+            "$36.1"
+          ],
+          [
+            "145%"
+          ],
+          [
+            "223%"
+          ],
+          [
+            "9.3%"
+          ],
+          [
+            "97%"
+          ]
+        ]
+      },
+      "samples": [
+        {
+          "gold": [
+            "get_technical_indicators"
+          ],
+          "pred": [
+            "get_technical_indicators"
+          ],
+          "output": "<|tool_call>call:get_technical_indicators{symbol:<|\"|>COST<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "get_technical_indicators"
+          ],
+          "pred": [
+            "get_technical_indicators"
+          ],
+          "output": "<|tool_call>call:get_technical_indicators{symbol:<|\"|>CAT<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "search_symbols"
+          ],
+          "pred": [
+            "get_quote"
+          ],
+          "output": "<|tool_call>call:get_quote{symbol:<|\"|>MICD<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "get_technical_indicators"
+          ],
+          "pred": [
+            "get_technical_indicators"
+          ],
+          "output": "<|tool_call>call:get_technical_indicators{symbol:<|\"|>SBUX<|\"|>}<tool_call|>"
+        }
+      ],
+      "seconds": 1384.6,
+      "name": "Candela tool use",
+      "metric": "tool_choice_f1",
+      "higherIsBetter": true
+    },
+    "heldout_loss": {
+      "value": 0.5104107735066333,
+      "n": 88,
+      "details": {
+        "tokens": 14666
+      },
+      "seconds": 149.8,
+      "name": "Held-out loss (d0.1 valid)",
+      "metric": "loss",
+      "higherIsBetter": false
+    }
+  }
+}

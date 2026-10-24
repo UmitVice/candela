@@ -115,7 +115,7 @@ def export_lora(run_id: str) -> Path:
     return out
 
 
-def _chat(client: httpx.Client, max_tokens: int = 64) -> str:
+def _chat(client: httpx.Client, max_tokens: int = 160) -> str:
     r = client.post(
         "/v1/chat/completions",
         json={
@@ -123,10 +123,12 @@ def _chat(client: httpx.Client, max_tokens: int = 64) -> str:
             "temperature": 0,
             "max_tokens": max_tokens,
             "seed": 1,
+            "chat_template_kwargs": {"enable_thinking": False},
         },
     )
     r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+    msg = r.json()["choices"][0]["message"]
+    return (msg.get("content") or msg.get("reasoning_content") or "").strip()
 
 
 def serve_check(run_id: str) -> dict[str, Any]:
