@@ -214,6 +214,7 @@ def session(
     lease: gpu_lease.Lease,
     probe: bool,
     resume_from: Path | None,
+    stop_at: int | None = None,
 ) -> RunState:
     spec = config.model(cfg.model_id)
     lora = lora_settings(cfg, spec)
@@ -300,7 +301,8 @@ def session(
     num_layers = int(spec.architecture["layers"])
     model.train()
     window_tokens, window_time, window_loss, window_n = 0, 0.0, 0.0, 0
-    while state.step < iters:
+    last = min(iters, stop_at) if stop_at else iters
+    while state.step < last:
         waited = lease.yield_if_needed(on_long_wait=release)
         if waited > 0:
             _append_metric(
@@ -377,6 +379,12 @@ def session(
             _append_metric(rd, {"type": "deltas", "step": state.step, "norms": norms})
             state.checkpoints.append(state.step)
             save_checkpoint(rd, model, optimizer, state, lora, spec)
+    if state.step < iters:
+        state.status = "stopped"
+        if not probe:
+            save_checkpoint(rd, model, optimizer, state, lora, spec)
+        _write_json(rd / "state.json", state.__dict__)
+        return state
     state.status = "completed"
     state.finished_at = now()
     if not probe:
@@ -396,6 +404,7 @@ def run(
     simulate_pause_at: list[int] | None = None,
     simulate_recover_sec: float = 30.0,
     probe: bool = False,
+    stop_at: int | None = None,
 ) -> RunState:
     cfg = load_config(config_path)
     if iters is not None:
@@ -426,7 +435,7 @@ def run(
             while True:
                 paused: tuple[int, str] | None = None
                 try:
-                    state = session(cfg, run_id, state, guard, lease, probe, resume)
+                    state = session(cfg, run_id, state, guard, lease, probe, resume, stop_at)
                     break
                 except Paused as p:
                     paused = (p.step, p.reason)
@@ -472,14 +481,14 @@ def run(
         tokens_per_sec=round(state.trained_tokens / max(state.elapsed_sec, 1e-6), 1),
         pauses=len(state.pauses),
     )
-    if not probe:
+    if not probe and state.status == "completed":
         from candela_lab import observatory
 
         observatory.export_run(run_id)
     return state
 
 
-def resume(run_id: str) -> RunState:
+def resume(run_id: str, stop_at: int | None = None) -> RunState:
     rd = run_dir(run_id)
     cfg_raw = json.loads((rd / "config.json").read_text())
     probe = bool(cfg_raw.pop("probe", False))
@@ -488,7 +497,7 @@ def resume(run_id: str) -> RunState:
     import yaml
 
     tmp.write_text(yaml.safe_dump(cfg_raw))
-    return run(tmp, run_id=run_id, probe=probe)
+    return run(tmp, run_id=run_id, probe=probe, stop_at=stop_at)
 
 
 def status(run_id: str | None) -> None:

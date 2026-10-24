@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -145,6 +146,9 @@ def train_run(
     probe: Annotated[
         bool, typer.Option(help="Probe mode: no checkpoints or artifacts, report only.")
     ] = False,
+    stop_at: Annotated[
+        int | None, typer.Option(help="Checkpoint and exit at this step (schedule keeps the full length).")
+    ] = None,
 ) -> None:
     """Start a resource-guarded LoRA run."""
     from candela_lab.train import loop
@@ -156,15 +160,19 @@ def train_run(
         simulate_pause_at=simulate_pause_at or [],
         simulate_recover_sec=simulate_recover_sec,
         probe=probe,
+        stop_at=stop_at,
     )
 
 
 @train_app.command("resume")
-def train_resume(run_id: str) -> None:
+def train_resume(
+    run_id: str,
+    stop_at: Annotated[int | None, typer.Option(help="Checkpoint and exit at this step.")] = None,
+) -> None:
     """Resume a run from its latest checkpoint."""
     from candela_lab.train import loop
 
-    loop.resume(run_id)
+    loop.resume(run_id, stop_at=stop_at)
 
 
 @train_app.command("status")
@@ -200,6 +208,16 @@ def eval_compare(
     from candela_lab.eval import report
 
     report.compare(base_report, tuned_report, model_id)
+
+
+@eval_app.command("gate")
+def eval_gate(base_report: Path, tuned_report: Path) -> None:
+    """Apply the release gate to two reports and print the table (exit 1 when a check fails)."""
+    from candela_lab.eval import report
+
+    rows = report.gate(json.loads(base_report.read_text()), json.loads(tuned_report.read_text()))
+    print(report.gate_markdown(rows))
+    raise typer.Exit(0 if all(r["pass"] is not False for r in rows) else 1)
 
 
 @export_app.command("fuse")
@@ -249,6 +267,19 @@ def observatory_export(
     observatory.write_manifest()
     if sync:
         observatory.sync()
+
+
+@observatory_app.command("galaxy")
+def observatory_galaxy(
+    model_id: Annotated[str, typer.Argument(help="Observatory model id the galaxy belongs to.")],
+    adapter: Annotated[Path | None, typer.Option(help="LoRA adapter directory.")] = None,
+    pin: Annotated[bool, typer.Option(help="Record the sha256 of the constituent list.")] = False,
+) -> None:
+    """Embed S&P 500 company descriptions with the model and write galaxy.json (GPU, guarded)."""
+    from candela_lab import galaxy
+
+    galaxy.constituents(pin=pin)
+    galaxy.export(model_id, adapter)
 
 
 @app.command()

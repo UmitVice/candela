@@ -111,3 +111,70 @@ def compare(base_path: Path, tuned_path: Path, model_id: str) -> Path:
     out.write_text(json.dumps(payload, separators=(",", ":")))
     _log.info("observatory eval written", path=str(out), suites=len(suites))
     return out
+
+
+CLASSIC = ("fpb", "fiqa_sa", "headlines", "finqa", "convfinqa", "tatqa", "financebench", "ifeval")
+MAX_DROP = 0.03
+MIN_GAIN = 0.10
+
+
+def _value(report: dict[str, Any], sid: str, key: str | None = None) -> float | None:
+    s = report["suites"].get(sid) or {}
+    v = (s.get("details") or {}).get(key) if key else s.get("value")
+    return None if v is None else float(v)
+
+
+def gate(base: dict[str, Any], tuned: dict[str, Any]) -> list[dict[str, Any]]:
+    """Release gate (master plan §8, ADR 0403): tool-choice F1 +10 points; grounding +10 points, or at least half
+    of the base's ungrounded rate removed when the base is above 0.90; no classic suite or IFEval below base −3
+    points. `noise` is two binomial standard errors of the difference, for reading small deltas."""
+    rows: list[dict[str, Any]] = []
+
+    def add(check: str, b: float | None, t: float | None, ok: bool | None, n: int, rule: str) -> None:
+        noise = None
+        if b is not None and n:
+            noise = round(2 * (2 * max(b * (1 - b), 1e-4) / n) ** 0.5, 4)
+        rows.append(
+            {
+                "check": check,
+                "base": b,
+                "tuned": t,
+                "delta": None if b is None or t is None else round(t - b, 4),
+                "noise2se": noise,
+                "rule": rule,
+                "pass": ok,
+            }
+        )
+
+    n_tool = int((tuned["suites"].get("tool_use") or {}).get("details", {}).get("callTurns") or 0)
+    b, t = _value(base, "tool_use"), _value(tuned, "tool_use")
+    add(
+        "tool_choice_f1",
+        b,
+        t,
+        None if b is None or t is None else round(t - b, 4) >= MIN_GAIN,
+        n_tool,
+        "+0.10",
+    )
+    n_ans = int((tuned["suites"].get("tool_use") or {}).get("details", {}).get("answerTurns") or 0)
+    b, t = _value(base, "tool_use", "groundingRate"), _value(tuned, "tool_use", "groundingRate")
+    ok = None
+    if b is not None and t is not None:
+        ok = round(t - b, 4) >= MIN_GAIN or (b > 0.9 and (1 - t) <= 0.5 * (1 - b))
+    add("grounding_rate", b, t, ok, n_ans, "+0.10, or ungrounded share halved when base > 0.90")
+    for sid in CLASSIC:
+        b, t = _value(base, sid), _value(tuned, sid)
+        n = int((tuned["suites"].get(sid) or {}).get("n") or 0)
+        add(sid, b, t, None if b is None or t is None else round(t - b, 4) >= -MAX_DROP, n, "≥ −0.03")
+    return rows
+
+
+def gate_markdown(rows: list[dict[str, Any]]) -> str:
+    lines = ["| Check | Base | Tuned | Δ | ±2σ | Rule | Pass |", "|---|---:|---:|---:|---:|---|---|"]
+    for r in rows:
+        verdict = "n/a" if r["pass"] is None else ("yes" if r["pass"] else "**no**")
+        delta = "n/a" if r["delta"] is None else f"{r['delta']:+.3f}"
+        lines.append(
+            f"| {r['check']} | {_fmt(r['base'])} | {_fmt(r['tuned'])} | {delta} | {_fmt(r['noise2se'])} | {r['rule']} | {verdict} |"
+        )
+    return "\n".join(lines) + "\n"
