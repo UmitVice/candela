@@ -6,7 +6,8 @@ cd "$(dirname "$0")/.."
 step="${1:-all}"
 lab() { uv run --frozen lab "$@"; }
 base_label=gemma-4-12b-qat-base-d0.2
-run_id=candela-pro-v0.1
+# The ablation winner continues to the full schedule and becomes the release run.
+run_id="${RUN_ID:-candela-pro-v0.1-lr5e5}"
 latest() { ls -t reports/eval/"$1"-2*.json | head -1; }
 
 if [[ "$step" == all || "$step" == distill ]]; then
@@ -19,8 +20,8 @@ if [[ "$step" == all || "$step" == baseline ]]; then
 fi
 if [[ "$step" == all || "$step" == ablate ]]; then
   for lr in 1e4 5e5; do
-    lab train run "configs/train/candela-pro-v0.1-lr$lr.yaml" --run-id "ablate-lr$lr" --stop-at 150
-    lab eval run gemma-4-12b-qat --mode fast --adapter "runs/ablate-lr$lr/adapter" --label "ablate-lr$lr-s150" \
+    lab train run "configs/train/candela-pro-v0.1-lr$lr.yaml" --run-id "candela-pro-v0.1-lr$lr" --stop-at 150
+    lab eval run gemma-4-12b-qat --mode fast --adapter "runs/candela-pro-v0.1-lr$lr/adapter" --label "ablate-lr$lr-s150" \
       --suite fpb --suite fiqa_sa --suite headlines --suite finqa --suite convfinqa --suite tatqa \
       --suite financebench --suite ifeval --suite tool_use
   done

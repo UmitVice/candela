@@ -1,0 +1,18 @@
+# Candela Pro v0.1: QLoRA on the frozen QAT int4 base, about one epoch of d0.2 (ADR 0401, 0402); learning rate 5.0e-5.
+model: gemma-4-12b-qat
+observatory: {modelId: candela-pro-v0.1, displayName: "Candela Pro", version: v0.1}
+data: {version: d0.2}
+lora: {numLayers: 16}
+iters: 1180
+gradAccumulation: 8
+batchSize: 1
+maxSeqLength: 2048
+gradCheckpoint: true
+headChunk: 64
+evalEvery: 100
+validBatches: 64
+saveEvery: 50
+reportEvery: 1
+optimizer: {learningRate: 5.0e-5, warmup: 30, minLrRatio: 0.1, gradClip: 1.0, weightDecay: 0.0}
+memory: {budgetGb: 10.5, cacheGb: 0.5}
+seed: 7
