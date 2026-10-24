@@ -1,7 +1,8 @@
 import json
 import platform
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,7 +13,7 @@ import mlx.core as mx
 from candela_lab import config, gpu_lease, log, resources
 from candela_lab.data.common import read_jsonl
 from candela_lab.eval import datasets, metrics, report
-from candela_lab.paths import PROCESSED_DIR, REPORTS_DIR, RUNS_DIR
+from candela_lab.paths import DATA_VERSION, PROCESSED_DIR, REPORTS_DIR, RUNS_DIR
 from candela_lab.traces.grounding import grounding_report
 from candela_lab.traces.schema import validate_arguments
 
@@ -27,6 +28,8 @@ SIZES = {
         "finqa": 100,
         "convfinqa": 100,
         "tatqa": 100,
+        "ifeval": 150,
+        "financebench": 150,
         "tool_use": 40,
         "heldout_loss": 100,
     },
@@ -37,11 +40,24 @@ SIZES = {
         "finqa": 300,
         "convfinqa": 300,
         "tatqa": 300,
+        "ifeval": 600,
+        "financebench": 150,
         "tool_use": 300,
         "heldout_loss": 400,
     },
 }
-SUITES = ["fpb", "fiqa_sa", "headlines", "finqa", "convfinqa", "tatqa", "tool_use", "heldout_loss"]
+SUITES = [
+    "fpb",
+    "fiqa_sa",
+    "headlines",
+    "finqa",
+    "convfinqa",
+    "tatqa",
+    "financebench",
+    "ifeval",
+    "tool_use",
+    "heldout_loss",
+]
 SUITE_INFO: dict[str, dict[str, Any]] = {
     "fpb": {"name": "Financial PhraseBank", "metric": "macro_f1", "higherIsBetter": True},
     "fiqa_sa": {"name": "FiQA sentiment", "metric": "weighted_f1", "higherIsBetter": True},
@@ -49,10 +65,19 @@ SUITE_INFO: dict[str, dict[str, Any]] = {
     "finqa": {"name": "FinQA", "metric": "numeric_em", "higherIsBetter": True},
     "convfinqa": {"name": "ConvFinQA", "metric": "numeric_em", "higherIsBetter": True},
     "tatqa": {"name": "TAT-QA (arithmetic)", "metric": "numeric_em", "higherIsBetter": True},
+    "financebench": {"name": "FinanceBench (evidence given)", "metric": "accuracy", "higherIsBetter": True},
+    "ifeval": {"name": "IFEval (strict, prompt level)", "metric": "prompt_strict", "higherIsBetter": True},
     "tool_use": {"name": "Candela tool use", "metric": "tool_choice_f1", "higherIsBetter": True},
-    "heldout_loss": {"name": "Held-out loss (d0.1 valid)", "metric": "loss", "higherIsBetter": False},
+    "heldout_loss": {
+        "name": f"Held-out loss ({DATA_VERSION} valid)",
+        "metric": "loss",
+        "higherIsBetter": False,
+    },
 }
-BATCH = {"short": 16, "long": 4}
+# Small batches and a two-prompt prefill keep evaluation near the 11 GB start threshold (p1 peaked at 13 GB
+# with 16/4 and a batch-wide prefill).
+BATCH = {"short": 8, "long": 4}
+PREFILL_BATCH = 2
 
 
 @dataclass
@@ -73,15 +98,19 @@ class Engine:
         return self.tokenizer.encode(text, add_special_tokens=False)
 
     def generate(self, prompts: list[list[int]], max_tokens: int, batch: int) -> list[str]:
+        return [text for text, _ in self.generate_full(prompts, max_tokens, batch)]
+
+    def generate_full(self, prompts: list[list[int]], max_tokens: int, batch: int) -> list[tuple[str, bool]]:
+        """Greedy batched generation; returns (text, truncated) per prompt."""
         from mlx_lm.generate import batch_generate
 
         hf = getattr(self.tokenizer, "_tokenizer", self.tokenizer)
-        out: list[str] = []
+        out: list[tuple[str, bool]] = []
         for i in range(0, len(prompts), batch):
             self.lease.yield_if_needed()
             decision = self.guard.check_step(0)
             if not decision.ok:
-                _log.warning("memory pressure during eval, waiting", reason=decision.reason)
+                _log.warning("memory pressure during generation, waiting", reason=decision.reason)
                 resources.release_mlx_memory()
                 self.guard.wait_for_recovery(recover_sec=60, holding_model=True)
             res = batch_generate(
@@ -90,10 +119,13 @@ class Engine:
                 prompts[i : i + batch],
                 max_tokens=max_tokens,
                 return_token_ids=True,
-                prefill_batch_size=min(batch, 8),
+                prefill_batch_size=PREFILL_BATCH,
                 completion_batch_size=batch,
             )
-            out.extend(hf.decode(ids, skip_special_tokens=False) for ids in res.token_ids or [])
+            out.extend(
+                (hf.decode(ids, skip_special_tokens=False), len(ids) >= max_tokens)
+                for ids in res.token_ids or []
+            )
             mx.clear_cache()
         return out
 
@@ -142,6 +174,58 @@ def numeric(engine: Engine, suite: str, n: int, limit: int | None) -> dict[str, 
         "value": hits / max(len(items), 1),
         "n": len(items),
         "details": {"unparsed": unparsed / max(len(items), 1)},
+        "samples": samples,
+    }
+
+
+def instruction_following(engine: Engine, n: int, limit: int | None) -> dict[str, Any]:
+    from candela_lab.eval import ifeval
+
+    items = datasets.load("ifeval", limit or n)
+    prompts = [engine.prompt_ids([{"role": "user", "content": it.prompt}]) for it in items]
+    outputs = engine.generate_full(prompts, max_tokens=768, batch=BATCH["short"])
+    prompt_ok = inst_ok = inst_total = truncated = 0
+    samples = []
+    for it, (text, cut) in zip(items, outputs, strict=True):
+        response = metrics.strip_reasoning(text).replace("<turn|>", "").strip()
+        checks = ifeval.check(response, it.extra["ids"], it.extra["kwargs"])
+        prompt_ok += all(checks)
+        inst_ok += sum(checks)
+        inst_total += len(checks)
+        truncated += cut
+        if len(samples) < 4:
+            samples.append({"prompt": it.prompt[:300], "output": response[:400], "checks": checks})
+    return {
+        "value": prompt_ok / max(len(items), 1),
+        "n": len(items),
+        "details": {
+            "instructionStrict": inst_ok / max(inst_total, 1),
+            "truncated": truncated / max(len(items), 1),
+        },
+        "samples": samples,
+    }
+
+
+def grounded_qa(engine: Engine, n: int, limit: int | None) -> dict[str, Any]:
+    items = datasets.load("financebench", limit or n)
+    prompts = [engine.prompt_ids([{"role": "user", "content": it.prompt}]) for it in items]
+    texts = engine.generate(prompts, max_tokens=256, batch=BATCH["long"])
+    scored = hits = 0
+    samples = []
+    for it, text in zip(items, texts, strict=True):
+        ok = metrics.financebench_score(text, it.answer)
+        if ok is None:
+            continue
+        scored += 1
+        hits += ok
+        if len(samples) < 5:
+            samples.append(
+                {"question": it.prompt[-300:], "output": text[:400], "gold": it.answer[:200], "ok": ok}
+            )
+    return {
+        "value": hits / max(scored, 1),
+        "n": scored,
+        "details": {"items": len(items), "unscorable": len(items) - scored},
         "samples": samples,
     }
 
@@ -217,7 +301,7 @@ def tool_use(engine: Engine, n: int, limit: int | None) -> dict[str, Any]:
     }
 
 
-def heldout_loss(engine: Engine, n: int, limit: int | None, version: str = "d0.1") -> dict[str, Any]:
+def heldout_loss(engine: Engine, n: int, limit: int | None, version: str = DATA_VERSION) -> dict[str, Any]:
     from candela_lab.train import data as tdata
     from candela_lab.train.loss import make_loss, to_float
 
@@ -247,9 +331,33 @@ RUNNERS: dict[str, Callable[[Engine, int, int | None], dict[str, Any]]] = {
     "finqa": lambda e, n, lim: numeric(e, "finqa", n, lim),
     "convfinqa": lambda e, n, lim: numeric(e, "convfinqa", n, lim),
     "tatqa": lambda e, n, lim: numeric(e, "tatqa", n, lim),
+    "financebench": grounded_qa,
+    "ifeval": instruction_following,
     "tool_use": tool_use,
     "heldout_loss": heldout_loss,
 }
+
+
+@contextmanager
+def engine_session(model_id: str, adapter: Path | None, purpose: str) -> Iterator[Engine]:
+    """Loads the base (plus adapter) under the eval GPU lease and the Pro memory guard."""
+    from mlx_lm import load
+
+    spec = config.model(model_id)
+    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb, policy=resources.PRO_POLICY)
+    _neighbourly_wired_limit()
+    with gpu_lease.Lease("lab-eval", purpose=purpose, state="waiting") as lease:
+        guard.wait_for_headroom(what=purpose)
+        lease.activate()
+        resources.apply_process_limits(spec.inference_budget_gb, cache_gb=1.0)
+        mx.reset_peak_memory()
+        loaded = load(spec.base_path(), adapter_path=str(adapter) if adapter else None)
+        engine = Engine(loaded[0], loaded[1], spec.family, lease, guard)
+        try:
+            yield engine
+        finally:
+            del engine, loaded
+            resources.release_mlx_memory()
 
 
 def run(
@@ -260,22 +368,11 @@ def run(
     label: str | None = None,
     limit: int | None = None,
 ) -> Path:
-    from mlx_lm import load
-
     spec = config.model(model_id)
     chosen = suites or SUITES
     sizes = SIZES[mode]
-    guard = resources.ResourceGuard(budget_gb=spec.inference_budget_gb, policy=resources.PRO_POLICY)
-    _neighbourly_wired_limit()
     started = time.time()
-    with gpu_lease.Lease("lab-eval", purpose=f"eval {label or spec.id}", state="waiting") as lease:
-        guard.wait_for_headroom(what=f"eval {spec.id}")
-        lease.activate()
-        resources.apply_process_limits(spec.inference_budget_gb, cache_gb=1.0)
-        mx.reset_peak_memory()
-        loaded = load(spec.base_path(), adapter_path=str(adapter) if adapter else None)
-        model, tokenizer = loaded[0], loaded[1]
-        engine = Engine(model, tokenizer, spec.family, lease, guard)
+    with engine_session(model_id, adapter, f"eval {label or spec.id}") as engine:
         results: dict[str, Any] = {}
         cache_dir = RUNS_DIR / "eval" / (label or spec.id)
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -294,8 +391,6 @@ def run(
             cache.write_text(json.dumps(res, default=str))
             _log.info("suite done", suite=suite, value=res["value"], n=res["n"], seconds=res["seconds"])
         peak = mx.get_peak_memory() / 1e9
-        del model, engine
-        resources.release_mlx_memory()
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     report_id = label or spec.id
     payload = {
@@ -306,7 +401,7 @@ def run(
         "adapter": str(adapter) if adapter else None,
         "mode": mode,
         "limit": limit,
-        "datasetVersion": "d0.1",
+        "datasetVersion": DATA_VERSION,
         "evalSeed": datasets.EVAL_SEED,
         "decoding": {"temperature": 0.0, "thinking": False},
         "evaluatedAt": datetime.now(UTC).isoformat(timespec="seconds"),

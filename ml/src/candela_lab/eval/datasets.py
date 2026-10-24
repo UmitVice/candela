@@ -1,3 +1,4 @@
+import ast
 import json
 import random
 from collections.abc import Iterator
@@ -10,10 +11,11 @@ import pandas as pd
 from candela_lab.config import load_yaml
 from candela_lab.data import voice
 from candela_lab.data.sources import hf_file, url_file
-from candela_lab.paths import CONFIGS_DIR, DATA_DIR
+from candela_lab.eval import ifeval
+from candela_lab.paths import CONFIGS_DIR, DATA_DIR, DATA_VERSION
 
 EVAL_SEED = 1234
-TOOL_USE_PATH = DATA_DIR / "eval" / "tool_use-d0.1.jsonl"
+TOOL_USE_PATH = DATA_DIR / "eval" / f"tool_use-{DATA_VERSION}.jsonl"
 
 SENTIMENT_PROMPT = (
     "Classify the sentiment of the following financial text. Reply with exactly one word: "
@@ -22,6 +24,11 @@ SENTIMENT_PROMPT = (
 NUMERIC_PROMPT = (
     "{context}\n\nQuestion: {question}\n\nShow the calculation in at most two short lines, then finish with a "
     "final line of the form 'Answer: <number>'."
+)
+
+FINANCEBENCH_PROMPT = (
+    "Use the excerpts from {company}'s {doc} below to answer the question.\n\n{evidence}\n\nQuestion: {question}\n\n"
+    "Answer in at most three sentences and state the key figure explicitly."
 )
 
 
@@ -36,7 +43,7 @@ class EvalItem:
 
 
 def _eval_sources() -> dict[str, dict[str, Any]]:
-    cfg = load_yaml(CONFIGS_DIR / "data" / "d0.1.yaml")
+    cfg = load_yaml(CONFIGS_DIR / "data" / f"{DATA_VERSION}.yaml")
     return {e["id"]: e for e in cfg["eval"]}
 
 
@@ -164,6 +171,51 @@ def _tatqa() -> list[EvalItem]:
     return items
 
 
+def _ifeval() -> list[EvalItem]:
+    items = []
+    with _path("ifeval").open() as f:
+        for line in f:
+            row = json.loads(line)
+            if not ifeval.supported(row["instruction_id_list"]):
+                continue
+            items.append(
+                EvalItem(
+                    id=str(row["key"]),
+                    suite="ifeval",
+                    prompt=row["prompt"],
+                    answer="",
+                    extra={"ids": row["instruction_id_list"], "kwargs": row["kwargs"]},
+                )
+            )
+    return items
+
+
+def _financebench() -> list[EvalItem]:
+    items = []
+    with _path("financebench").open() as f:
+        for line in f:
+            row = json.loads(line)
+            evidence = row["evidence"]
+            if isinstance(evidence, str):
+                evidence = ast.literal_eval(evidence)
+            text = "\n\n".join(str(e.get("evidence_text", "")).strip() for e in evidence)[:12000]
+            items.append(
+                EvalItem(
+                    id=str(row["financebench_id"]),
+                    suite="financebench",
+                    prompt=FINANCEBENCH_PROMPT.format(
+                        company=row["company"],
+                        doc=row["doc_name"],
+                        evidence=text,
+                        question=row["question"].strip(),
+                    ),
+                    answer=str(row["answer"]).strip(),
+                    extra={"type": row.get("question_type")},
+                )
+            )
+    return items
+
+
 def _financebench_texts() -> Iterator[str]:
     with _path("financebench").open() as f:
         for line in f:
@@ -195,6 +247,8 @@ LOADERS = {
     "finqa": _finqa,
     "convfinqa": _convfinqa,
     "tatqa": _tatqa,
+    "ifeval": _ifeval,
+    "financebench": _financebench,
     "tool_use": tool_use_items,
 }
 

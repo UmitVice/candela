@@ -113,3 +113,38 @@ def prf(tp: int, fp: int, fn: int) -> dict[str, float]:
     recall = tp / (tp + fn) if tp + fn else 1.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {"precision": precision, "recall": recall, "f1": f1}
+
+
+YEAR_RE = re.compile(r"^(19|20)\d\d$")
+
+
+def _numbers(text: str) -> list[float]:
+    out = []
+    for raw in NUM_RE.findall(text):
+        bare = raw.replace("$", "").replace(",", "").rstrip("%")
+        if YEAR_RE.match(bare):
+            continue
+        value = to_number(raw)
+        if value is not None:
+            out.append(value)
+    return out
+
+
+def financebench_score(pred: str, gold: str) -> bool | None:
+    """Lenient grounded-QA match: yes/no answers by their leading word, numeric answers by the first non-year gold
+    figure appearing anywhere in the prediction (unit scalings ×1000 and percent/ratio accepted); otherwise
+    unscorable (None)."""
+    g = gold.strip().lower()
+    p = strip_reasoning(pred).strip().lower()
+    for word in ("yes", "no"):
+        if re.match(rf"{word}\b", g):
+            return bool(re.match(rf"\W*{word}\b", p))
+    golds = _numbers(gold)
+    if not golds:
+        return None
+    target = golds[0]
+    for value in _numbers(pred):
+        for scale in (1.0, 1000.0, 0.001):
+            if numeric_match(value * scale, target):
+                return True
+    return False
