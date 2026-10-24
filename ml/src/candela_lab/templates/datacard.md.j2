@@ -40,7 +40,11 @@ Task totals: {% for k, v in m.tasks.items() %}`{{ k }}` {{ v }}{% if not loop.la
 ## Processing
 
 1. **Normalisation** to OpenAI-style messages (`system`/`user`/`assistant` with `tool_calls` whose arguments are JSON objects, `tool` messages with `tool_call_id`). Function schemas are converted to the OpenAI `tools` format; tool names are sanitised to `[A-Za-z0-9_-]`. Source-specific system prompts that embed tool lists are replaced by a short generic prompt because the chat template renders `tools` natively.
+{% if m.version == "d0.1" -%}
 2. **Candela voice** for classic tasks: numeric QA becomes an instruction over the filing excerpt (Markdown table) with a short step-by-step rationale rendered from the gold program or derivation; sentiment and headline-topic items become short labelled answers.
+{%- else -%}
+2. **Retention by self-distillation** (ADR 0402): numeric QA (FinQA, TAT-QA and ConvFinQA train splits), sentiment and headline-topic prompts (financial tweets) and general instructions (smoltalk) are answered by the frozen QAT base with greedy decoding (`lab data distill`); an answer is kept only when its number matches the gold answer (1 % tolerance), its label matches the gold label (labels balanced across positive/negative/neutral), or, for general prompts, when it finished before the token limit. About 60 % of the prompts use the instruction format of the evaluation suites, the rest varied phrasings. ConvFinQA dialogues keep gold answers in a concise "calculation, then `Answer: <number>`" format.
+{%- endif %}
 3. **Quality filters**: final message must be an assistant turn; no empty user or assistant turns; tool-call arguments must be objects; boilerplate refusals, degenerate repetition and non-English answers are removed.
 4. **PII scrubbing** (emails, phone numbers, SSN-like and Luhn-valid card-like numbers, IPv4 addresses replaced by placeholders): {% for k, v in m.pii.items() %}{{ k }} {{ v }}{% if not loop.last %}, {% endif %}{% else %}nothing found{% endfor %}.
 5. **Deduplication**: exact (normalised text hash) and MinHash near-duplicates (128 permutations, 32 bands, 5-word shingles, Jaccard ≥ 0.85). Numeric QA is deduplicated on the question and answer only, because several questions legitimately share one filing excerpt.
@@ -55,6 +59,10 @@ Financial PhraseBank (CC-BY-NC-SA-3.0), FiQA-SA, Gold news headlines, FinanceBen
 
 - `nemotron-agentic-finance` v2.0 publishes only the final user/assistant pair of each agent run (the tool trajectories are not included). These samples carry no Candela system prompt so the model does not learn to state filing figures from memory under the production prompt.
 - Sentiment and topic training data come from short financial tweets (MIT); there is no permissive headline-question set comparable to the Gold headlines benchmark.
+{%- if m.version != "d0.1" %}
+- Retention answers inherit the base model's mistakes on prompts where the gold check cannot see them (general prompts, reasoning text around a correct number).
+- Samples are capped at {{ m.maxTokens }} tokens, the training window (ADR 0401): final answers of full five-tool analyses and comparisons do not fit and are not in the data; their tool-call turns are.
+{%- endif %}
 - Candela traces in this build come from the executor recorded per sample in `meta.executor`; traces from the `fake` executor reuse contract-shaped synthetic tool outputs and are meant for pipeline validation and pilots.
 
 ## Examples

@@ -87,6 +87,15 @@ class Engine:
     family: str
     lease: gpu_lease.Lease
     guard: resources.ResourceGuard
+    outputs_dir: Path | None = None
+
+    def save_outputs(self, suite: str, rows: list[dict[str, Any]]) -> None:
+        if self.outputs_dir is None:
+            return
+        self.outputs_dir.mkdir(parents=True, exist_ok=True)
+        with (self.outputs_dir / f"{suite}-outputs.jsonl").open("w") as f:
+            for row in rows:
+                f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
 
     def prompt_ids(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
@@ -276,11 +285,14 @@ def tool_use(engine: Engine, n: int, limit: int | None) -> dict[str, Any]:
             samples.append({"gold": gold, "pred": pred, "output": text[:400]})
     ans_texts = engine.generate(ans_prompts, max_tokens=384, batch=BATCH["long"])
     rates, ungrounded_examples = [], []
+    answers: list[dict[str, Any]] = []
     for text, ctx in zip(ans_texts, ans_ctx, strict=True):
         rep = grounding_report(metrics.strip_reasoning(text), ctx)
         rates.append(rep["rate"])
+        answers.append({"answer": text, "toolResults": ctx, "grounding": rep})
         if rep["ungrounded"] and len(ungrounded_examples) < 5:
             ungrounded_examples.append(rep["ungrounded"][:5])
+    engine.save_outputs("tool_use", answers)
     choice = metrics.prf(tp, fp, fn)
     return {
         "value": choice["f1"],
@@ -376,6 +388,7 @@ def run(
         results: dict[str, Any] = {}
         cache_dir = RUNS_DIR / "eval" / (label or spec.id)
         cache_dir.mkdir(parents=True, exist_ok=True)
+        engine.outputs_dir = cache_dir / mode
         for suite in chosen:
             cache = cache_dir / f"{suite}-{mode}-{limit or 'all'}.json"
             if cache.exists():
