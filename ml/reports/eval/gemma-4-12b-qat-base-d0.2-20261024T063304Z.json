@@ -1,0 +1,473 @@
+{
+  "reportId": "gemma-4-12b-qat-base-d0.2",
+  "modelId": "gemma-4-12b-qat",
+  "baseModel": "google/gemma-4-12B-it-qat-q4_0-unquantized",
+  "basePath": "/Users/umit/models/gemma-4-12b-it-qat-mlx-q4",
+  "adapter": null,
+  "mode": "fast",
+  "limit": null,
+  "datasetVersion": "d0.2",
+  "evalSeed": 1234,
+  "decoding": {
+    "temperature": 0.0,
+    "thinking": false
+  },
+  "evaluatedAt": "2026-10-24T06:33:04+00:00",
+  "durationSec": 2644.7,
+  "peakMemGb": 10.95,
+  "machine": "Apple M5 Pro \u00b7 arm64",
+  "suites": {
+    "fpb": {
+      "value": 0.8554295553483543,
+      "n": 300,
+      "details": {
+        "f1": 0.8554295553483543,
+        "accuracy": 0.8566666666666667,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": " the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: ( ADP News ) - Finnish handling systems provider Cargotec Oyj ( HEL : CGCBV ) announced on Friday it won orders worth EUR 10 million ( USD 13.2 m ) to deliver linkspans to Jordan , Morocco and Ireland .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        },
+        {
+          "prompt": "word: positive, negative or neutral.\n\nText: The world 's biggest magazine paper maker said the program to improve efficiency will include closing several of its least competitive mills and would cover all the company 's operations resulting in annual savings of some euro200 million US$ 240 million .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        },
+        {
+          "prompt": "ive or neutral.\n\nText: ST. PETERSBURG , Oct 14 ( PRIME-TASS ) -- Finnish tire producer Nokian Tyres plans to invest about 50 million euros in the expansion of its tire plant in the city of Vsevolozhsk in Russia 's Leningrad Region in 2011 , the company 's President Kim Gran told reporters Thursday .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        },
+        {
+          "prompt": " exactly one word: positive, negative or neutral.\n\nText: - BEIJING XFN-ASIA - Hong Kong-listed Standard Chartered Bank said it has signed a China mobile phone dealer financing agreement with Nokia , making it the first foreign bank to offer financing to the country 's small and medium enterprise -LR",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Finnish software developer Done Solutions Oyj said its net profit increased to 3.5 mln euro ( $ 4.6 mln ) in 2006 from 2.3 mln euro ( $ 3.0 mln ) in 2005 .",
+          "output": "positive",
+          "gold": "positive",
+          "pred": "positive"
+        }
+      ],
+      "seconds": 51.2,
+      "name": "Financial PhraseBank",
+      "metric": "macro_f1",
+      "higherIsBetter": true
+    },
+    "fiqa_sa": {
+      "value": 0.7574778942175426,
+      "n": 235,
+      "details": {
+        "f1": 0.7574778942175426,
+        "accuracy": 0.7063829787234043,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: $BBRY Actually lost .03c per share if U incl VZ as no debt and 3.1 in Cash.",
+          "output": "negative",
+          "gold": "negative",
+          "pred": "negative"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Legal & General share price: Finance chief to step down",
+          "output": "negative",
+          "gold": "negative",
+          "pred": "negative"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Kingfisher share price slides on cost to implement new strategy",
+          "output": "negative",
+          "gold": "negative",
+          "pred": "negative"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: EasyJet Dismisses Lufthansa Low-Cost Plan in Contest for Germany",
+          "output": "neutral",
+          "gold": "negative",
+          "pred": "neutral"
+        },
+        {
+          "prompt": "Classify the sentiment of the following financial text. Reply with exactly one word: positive, negative or neutral.\n\nText: Tesco share price tumbles after negative broker note",
+          "output": "negative",
+          "gold": "negative",
+          "pred": "negative"
+        }
+      ],
+      "seconds": 36.1,
+      "name": "FiQA sentiment",
+      "metric": "weighted_f1",
+      "higherIsBetter": true
+    },
+    "headlines": {
+      "value": 0.750037073891667,
+      "n": 300,
+      "details": {
+        "f1": 0.750037073891667,
+        "accuracy": 0.7566666666666667,
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "Look for indications that the price of gold is increasing.. Is there a mention of a Direction Up in relation to gold in the news headline? Please answer with Yes or No.\nText: Gold climbs to 2-1/2 week highs on views Fed will hold off on rates\n\nReply with exactly one word: Yes or No.",
+          "output": "Yes",
+          "gold": "yes",
+          "pred": "yes"
+        },
+        {
+          "prompt": "Consider whether the headline mentions the price of gold.. Is the news headline discussing a Price or Not related to gold? Please respond with Yes or No.\nText: gold monetisation scheme to be revamped this week: report\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "no",
+          "pred": "no"
+        },
+        {
+          "prompt": "Consider if the headline compares gold with other assets.. Is there a Asset Comparision in the gold commodity market indicated in the news headline? Please answer Yes or No.\nText: gold futures edge lower but remain supported by weaker dollar\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "yes",
+          "pred": "no"
+        },
+        {
+          "prompt": "Consider if the headline compares gold with other assets.. Does the news headline indicate a Asset Comparision in the context of gold commodities? Your answer should be Yes or No.\nText: gold, silver settle higher on greece turmoil\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "yes",
+          "pred": "no"
+        },
+        {
+          "prompt": "Look for indications that the price of gold is increasing.. Does the news headline indicate a Direction Up in the context of gold commodities? Your answer should be Yes or No.\nText: gold rate: check out latest gold price, trends and market outlook\n\nReply with exactly one word: Yes or No.",
+          "output": "No",
+          "gold": "no",
+          "pred": "no"
+        }
+      ],
+      "seconds": 50.4,
+      "name": "Gold headlines",
+      "metric": "weighted_f1",
+      "higherIsBetter": true
+    },
+    "finqa": {
+      "value": 0.66,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": ", and were reflected as an increase to common stock in the consolidated statements of shareholders 2019 equity. .\n\nQuestion: what was the greatest provision for income taxes , in millions?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "To find the greatest provision for income taxes, we compare the \"provision for income taxes\" row for the years 2006, 2005, and 2004:\n2006: $829 million; 2005: $480 million; 2004: $104 million.\n\nAnswer: 829",
+          "gold": "829.0",
+          "pred": 829.0,
+          "ok": true
+        },
+        {
+          "prompt": "es of company stock. .\n\nQuestion: assuming the same level of settlements as in fiscal 2007 , what would be the ending balance at march 31 2008 in millions for unrecognized tax benefits?\\\\n\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "To calculate the ending balance at March 31, 2008, in millions:\n$224 (April 1, 2007 balance) - $56 (reductions) = $168 (in thousands)\n$168 / 1,000 = $0.168 million\n\nAnswer: 0.168",
+          "gold": "112.0",
+          "pred": 0.168,
+          "ok": false
+        },
+        {
+          "prompt": "transfer agent american stock transfer & trust company , 59 maiden lane , new york , ny 10038 , is our stock transfer agent. .\n\nQuestion: did abiomed outperform the nasdaq composite index?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Abiomed final value: 162.45; Nasdaq Composite final value: 127.66.\n162.45 > 127.66.\n\nAnswer: Yes",
+          "gold": "yes",
+          "pred": 127.66,
+          "ok": false
+        },
+        {
+          "prompt": " 128 |\n| total future minimum lease payments | $ 4218 |\n\nQuestion: what is the percentage increase in base rent for danvers , massachusetts facility from the period 2010-2014 to 2014-2016?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Increase = (($66,000 - $64,350) / $64,350) * 100\nIncrease = ($1,650 / $64,350) * 100 \u2248 2.564%\n\nAnswer: 2.56%",
+          "gold": "0.02564",
+          "pred": 2.56,
+          "ok": true
+        },
+        {
+          "prompt": "t any material settlements in fiscal 2009 but it is inherently uncertain to determine. .\n\nQuestion: what is the net change in the gross liability for unrecognized tax benefits during 2008?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Beginning Balance: $201,808\nChanges: +14,009 + 11,350 - 81,213 - 3,512 - 2,893 = -$62,261\nNet Change: $139,549 - $201,808 = -$62,259 (Note: Difference of $2 due to rounding in provided summary)\n\nAnswer: -62,259",
+          "gold": "-62259.0",
+          "pred": -62259.0,
+          "ok": true
+        }
+      ],
+      "seconds": 295.7,
+      "name": "FinQA",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "convfinqa": {
+      "value": 0.26,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": " pacific . this business provides card payment processing services to merchants in the asia-pacific region . the .\nConversations: \nq0: what is the value of goodwill? {answer0}\nQuestion: what is the value of customer-related intangible assets?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "the fiscal 2008 business acquisitions.\n\nThe table lists the following items (in thousands):\n1. Goodwill: $13,536\n2. **Customer-related intangible assets: $4,091**\n3. Contract-based intangible assets: $1,031\n4. Property and equipment: $267\n5. Other current assets: $502\n6. Total assets acquired: $19,427\n7. Current liabilities: -$2,347\n8. Minority interest in equity of subsidiary: -$486\n9. Net assets",
+          "gold": "4091.0",
+          "pred": 9.0,
+          "ok": false
+        },
+        {
+          "prompt": "es card payment processing services to merchants in the asia-pacific region . the .\nConversations: \nq0: what is the value of goodwill? {answer0}\nq1: what is the value of customer-related intangible assets? {answer1}\nQuestion: what is the sum?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "able provided in the context, row 2 shows \"goodwill\" with a total value of $13,536 (in thousands).\n2.  **Value of customer-related intangible assets (from q1):** Looking at the table provided in the context, row 3 shows \"customer-related intangible assets\" with a total value of $4,091 (in thousands).\n\nTo answer the final question, we calculate the sum of these two values:\n$13,536 + $4,091 = $17,62",
+          "gold": "17627.0",
+          "pred": 1762.0,
+          "ok": false
+        },
+        {
+          "prompt": "onsolidated and all of the entity 2019s assets , liabilities , and .\nConversations: \nq0: what is the aaa interest rate in 2009? {answer0}\nq1: what is it in 2008? {answer1}\nq2: what is the sum? {answer2}\nQuestion: what is the average per year?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "entify the values for the \"aaa/aaa\" credit rating from the provided table for the years 2009 and 2008.\n\n1.  **Identify the values:**\n    *   The value for 2009 (from row 2, column 3) is **14%**.\n    *   The value for 2008 (from row 2, column 4) is **19%**.\n\n2.  **Calculate the sum (as per q2):**\n    *   14% + 19% = 33%\n\n3.  **Calculate the average per year:**\n    *   The average is the sum divided",
+          "gold": "16.5",
+          "pred": 3.0,
+          "ok": false
+        },
+        {
+          "prompt": "nd what was it in 2006? {answer1}\nq2: what was, then, the change over the year? {answer2}\nq3: what was the rent expense in 2006? {answer3}\nQuestion: and how much does that change represent in relation to this 2006 rent expense, in percentage?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "n rent expense from 2006 to 2007, we first identify the relevant figures from the provided text:\n\n1.  **Rent expense in 2007:** $106.4 million\n2.  **Rent expense in 2006:** $81.5 million\n\nThe change in rent expense from 2006 to 2007 is:\n$106.4 million - $81.5 million = $24.9 million\n\nTo find the percentage change in relation to the 2006 rent expense:\n(Change / 2006 Rent Expense) * 100\n($24.9 / $81",
+          "gold": "0.30552",
+          "pred": 81.0,
+          "ok": false
+        },
+        {
+          "prompt": "onversations: \nq0: what was the increase in the operating profit for space systems from 2011 to 2012? {answer0}\nq1: and what was that operating profit in 2011? {answer1}\nQuestion: what, then, is that increase as a portion of this 2011 amount?\n\nFinish with a final line of the form 'Answer: <number>'.",
+          "output": "o 2012 and then calculate what portion that increase represents of the 2011 operating profit.\n\n1.  **Identify the operating profit for 2011 and 2012:**\n    From the table provided in the context:\n    - Operating profit in 2011 (Row 3, Column 2011) = $1,063 million.\n    - Operating profit in 2012 (Row 3, Column 2012) = $1,083 million.\n\n2.  **Calculate the increase in operating profit from 2011 to 2",
+          "gold": "0.01881",
+          "pred": 2.0,
+          "ok": false
+        }
+      ],
+      "seconds": 439.5,
+      "name": "ConvFinQA",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "tatqa": {
+      "value": 0.88,
+      "n": 100,
+      "details": {
+        "unparsed": 0.0
+      },
+      "samples": [
+        {
+          "prompt": "1,252 |\n| Other | 61,908 | 46,616 | 15,292 |\n| Total | $880,737 | $756,529 | $124,208 |\n\nQuestion: What is the change in Personnel costs, including teammate benefits between 2018 and 2019?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "$684,837 (2019) - $593,955 (2018) = $90,882\nAnswer: $90,882",
+          "gold": "90882",
+          "pred": 90882.0,
+          "ok": true
+        },
+        {
+          "prompt": "otes receivable and other non-current assets | $406.4 | $962.6 |\n\nQuestion: What was long-term prepaid ground rent as a percentage of notes receivable and other non-current assets in 2018?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Calculation: ($607.5 / $962.6) * 100\nAnswer: 63.12%",
+          "gold": "63.11",
+          "pred": 63.12,
+          "ok": true
+        },
+        {
+          "prompt": "mon share attributable to common shareholders - basic and diluted | $ (0.29) | $ (0.73) | $ 1.07 |\n\nQuestion: What was the increase / (decrease) in the net income (loss) from 2018 to 2019?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Net income (loss) 2019: $(19,931)\nNet income (loss) 2018: $(50,571)\nCalculation: -19,931 - (-50,571) = 30,640\n\nAnswer: 30,640",
+          "gold": "30640",
+          "pred": 30640.0,
+          "ok": true
+        },
+        {
+          "prompt": " 0 | 0 | 0 | 100 |\n| Manoj Shetty | 241,535 | 150 | 0 | 0 | 0 | 0 | 100 |\n\nQuestion: What is the total percentage net sales allocated under the 2019 Plan for Barry Litwin and Thomas Clark?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "Barry Litwin Net Sales: 20%\nThomas Clark Net Sales: 0%\nTotal: 20% + 0% = 20%\n\nAnswer: 20%",
+          "gold": "20",
+          "pred": 20.0,
+          "ok": true
+        },
+        {
+          "prompt": "1.11) | $(0.40) | $0.50 |\n| Earnings (loss) per share\u2014diluted | $(1.11) | $(0.40) | $0.49 |\n\nQuestion: What was the change in Weighted average number of shares\u2014basic between 2017 and 2018?\n\nShow the calculation in at most two short lines, then finish with a final line of the form 'Answer: <number>'.",
+          "output": "48,153 (2017) - 47,880 (2018) = 273\nThe change is a decrease of 273 thousand shares.\n\nAnswer: -273",
+          "gold": "-273",
+          "pred": -273.0,
+          "ok": true
+        }
+      ],
+      "seconds": 180.2,
+      "name": "TAT-QA (arithmetic)",
+      "metric": "numeric_em",
+      "higherIsBetter": true
+    },
+    "financebench": {
+      "value": 0.7698412698412699,
+      "n": 126,
+      "details": {
+        "items": 150,
+        "unscorable": 24
+      },
+      "samples": [
+        {
+          "question": "atements are an integral part of this statement.\n \n60\n\nQuestion: What is the FY2018 capital expenditure amount (in USD millions) for 3M? Give a response to the question by relying on the details shown in the cash flow statement.\n\nAnswer in at most three sentences and state the key figure explicitly.",
+          "output": "The FY2018 capital expenditure amount for 3M is $1,577 million. This figure is listed under the \"Cash Flows from Investing Activities\" section as \"Purchases of property, plant and equipment (PP&E).\"",
+          "gold": "$1577.00",
+          "ok": true
+        },
+        {
+          "question": ".\n58\n\nQuestion: Assume that you are a public equities analyst. Answer the following question by primarily using information that is shown in the balance sheet: what is the year end FY2018 net PPNE for 3M? Answer in USD billions.\n\nAnswer in at most three sentences and state the key figure explicitly.",
+          "output": "The year-end FY2018 net Property, Plant and Equipment (PPNE) for 3M is $8.738 billion. This figure is derived from the \"Property, plant and equipment net\" line item in the Consolidated Balance Sheet, which shows $8,738 million for the year ended December 31, 2018.",
+          "gold": "$8.70",
+          "ok": true
+        },
+        {
+          "question": "sed in) operating activities\n5,591 \n7,454 \n8,113 \nCash Flows from Investing Activities\nPurchases of property, plant and equipment (PP&E)\n(1,749)\n(1,603)\n(1,501)\n\nQuestion: Is 3M a capital-intensive business based on FY2022 data?\n\nAnswer in at most three sentences and state the key figure explicitly.",
+          "output": "Yes, 3M is a capital-intensive business as evidenced by its significant investment in physical infrastructure and production capabilities. The company reported **$25,998 million** in property, plant and equipment (gross) and spent **$1,749 million** on purchases of property, plant and equipment in FY2022. These figures, combined with a total asset base of $46,455 million, indicate a heavy reliance",
+          "gold": "No, the company is managing its CAPEX and Fixed Assets pretty efficiently, which is evident from below key metrics:\nCAPEX/Revenue Ratio: 5.1%\nFixed assets/Total Assets: 20%\nReturn on Assets= 12.4%",
+          "ok": false
+        },
+        {
+          "question": "ring benefits and ongoing general 3M cost\nmanagement.\n\nQuestion: What drove operating margin change as of FY2022 for 3M? If operating margin is not a useful metric for a company like this, then please state that and explain why.\n\nAnswer in at most three sentences and state the key figure explicitly.",
+          "output": "Operating margin change in 2022 was primarily driven by increased SG&A expenses, which included a significant **$1.2 billion** pre-tax charge for Combat Arms Earplugs litigation. Other factors included impairment costs from exiting PFAS manufacturing and Russia, divestiture-related restructuring charges, and investments in growth initiatives, partially offset by restructuring benefits and cost man",
+          "gold": "Operating Margin for 3M in FY2022 has decreased by 1.7% primarily due to: \n-Decrease in gross Margin\n-mostly one-off charges including Combat Arms Earplugs litigation, impairment related to exiting PF",
+          "ok": false
+        },
+        {
+          "question": ")\n(4.6)\n(3.9)\nHealth Care\n3.2 \n \n(1.4)\n(3.8)\n(2.0)\nConsumer\n(0.9)\n \n(0.4)\n(2.6)\n(3.9)\nTotal Company\n1.2 \n \n(0.5)\n(3.9)\n(3.2)\n\nQuestion: If we exclude the impact of M&A, which segment has dragged down 3M's overall growth in 2022?\n\nAnswer in at most three sentences and state the key figure explicitly.",
+          "output": "Excluding the impact of M&A (Acquisitions and Divestitures), the **Consumer** segment dragged down 3M's overall growth. While the Total Company had an organic sales growth of 1.2%, the Consumer segment's organic sales declined by **(0.9)%**.",
+          "gold": "The consumer segment shrunk by 0.9% organically.",
+          "ok": true
+        }
+      ],
+      "seconds": 415.0,
+      "name": "FinanceBench (evidence given)",
+      "metric": "accuracy",
+      "higherIsBetter": true
+    },
+    "ifeval": {
+      "value": 0.86,
+      "n": 150,
+      "details": {
+        "instructionStrict": 0.8913043478260869,
+        "truncated": 0.06
+      },
+      "samples": [
+        {
+          "prompt": "Write a resume for a fresh high school graduate who is seeking their first job. Make sure to include at least 12 placeholder represented by square brackets, such as [address], [name].",
+          "output": "**[Full Name]**\n[Address] | [Phone Number] | [Email Address]\n[LinkedIn Profile URL (Optional)]\n\n**OBJECTIVE**\nMotivated and reliable high school graduate with a strong academic record and a passion for [Specific Industry/Field, e.g., Customer Service/Retail/Technology]. Seeking an entry-level position at [Company Name] to leverage my [Skill 1] and [Skill 2] to contribute to team success while gain",
+          "checks": [
+            true
+          ]
+        },
+        {
+          "prompt": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\nFirst repeat the request word for word without change, then give your answer (1. do not say any words or characters before repeating the request; 2. the reques",
+          "output": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\n\nSubject: Resignation - [Your Name]\n\n<<Resignation Notice>>\n\nDear [Boss's Name],\n\nPlease accept this email as formal notification that I am resigning from my position as [Your Job Title] at [Company Name]. My last day of employment will be [Your Last Working ",
+          "checks": [
+            true,
+            true
+          ]
+        },
+        {
+          "prompt": "Write me a resume for Matthias Algiers. Use words with all capital letters to highlight key abilities, but make sure that words with all capital letters appear less than 10 times. Wrap the entire response with double quotation marks.",
+          "output": "\"MATTHIAS ALGIERS\nProject Manager | Operations Specialist\n\nPROFESSIONAL SUMMARY\nA results-oriented professional with extensive experience in streamlining workflows and leading cross-functional teams. Proven ability to deliver complex projects on time while maintaining high standards of quality.\n\nCORE COMPETENCIES\n- Strategic Planning\n- Team Leadership\n- Process Optimization\n- Budget Management\n- S",
+          "checks": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "prompt": "Write a letter to a friend in all lowercase letters ask them to go and vote.",
+          "output": "hey,\n\ni just wanted to send a quick note to remind you to head out and vote today. it\u2019s<audio|> so important to make our voices heard, and i know you care a lot about what happens in our community. \n\nit only takes a little bit of time, but it makes such a huge difference in the long run. let me know if you need a ride or want to grab coffee after you're done!\n\nhope you have a great day.\n\ntalk soon",
+          "checks": [
+            true
+          ]
+        }
+      ],
+      "seconds": 584.7,
+      "name": "IFEval (strict, prompt level)",
+      "metric": "prompt_strict",
+      "higherIsBetter": true
+    },
+    "tool_use": {
+      "value": 0.7171314741035857,
+      "n": 40,
+      "details": {
+        "toolChoicePrecision": 0.7317073170731707,
+        "toolChoiceRecall": 0.703125,
+        "toolChoiceF1": 0.7171314741035857,
+        "argumentValidity": 1.0,
+        "malformedCalls": 0,
+        "noToolAccuracy": 1.0,
+        "groundingRate": 0.9394949588226899,
+        "callTurns": 50,
+        "answerTurns": 49,
+        "ungroundedExamples": [
+          [
+            "12.8%"
+          ],
+          [
+            "2026-10-23"
+          ],
+          [
+            "8.5%"
+          ],
+          [
+            "$4.42"
+          ],
+          [
+            "1M"
+          ]
+        ]
+      },
+      "samples": [
+        {
+          "gold": [
+            "search_symbols"
+          ],
+          "pred": [
+            "search_symbols"
+          ],
+          "output": "<|tool_call>call:search_symbols{query:<|\"|>Microchip Technology<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "get_quote",
+            "get_price_history",
+            "get_technical_indicators",
+            "get_fundamentals",
+            "get_forecast"
+          ],
+          "pred": [
+            "get_quote",
+            "get_price_history",
+            "get_technical_indicators",
+            "get_fundamentals",
+            "get_forecast"
+          ],
+          "output": "<|tool_call>call:get_quote{symbol:<|\"|>CAT<|\"|>}<tool_call|><|tool_call>call:get_price_history{range:<|\"|>1Y<|\"|>,symbol:<|\"|>CAT<|\"|>}<tool_call|><|tool_call>call:get_technical_indicators{range:<|\"|>1Y<|\"|>,symbol:<|\"|>CAT<|\"|>}<tool_call|><|tool_call>call:get_fundamentals{period:<|\"|>annual<|\"|>,symbol:<|\"|>CAT<|\"|>}<tool_call|><|tool_call>call:get_forecast{symbol:<|\"|>CAT<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "get_quote",
+            "get_price_history",
+            "get_technical_indicators",
+            "get_fundamentals",
+            "get_forecast"
+          ],
+          "pred": [
+            "search_symbols"
+          ],
+          "output": "<|tool_call>call:search_symbols{query:<|\"|>Caterpillar<|\"|>}<tool_call|>"
+        },
+        {
+          "gold": [
+            "get_forecast"
+          ],
+          "pred": [],
+          "output": "The forecast for Caterpillar (CAT) is based on a **block bootstrap of 5-year daily log returns**, which is a statistical method that uses historical price behavior to project potential future price ranges. \n\nThese figures represent **probabilistic bands**, not analyst price targets. They indicate the range of outcomes based on historical volatility.\n\n### Forecast Horizons (Baseline)\n| Horizon | P1"
+        }
+      ],
+      "seconds": 585.4,
+      "name": "Candela tool use",
+      "metric": "tool_choice_f1",
+      "higherIsBetter": true
+    }
+  }
+}
