@@ -132,7 +132,7 @@ def build(version: str, tokenizer_model: str | None = None) -> dict[str, Any]:
             "id": src["id"],
             "bucket": src["bucket"],
             "license": src["license"],
-            "origin": src.get("repo") or src.get("urls") or src.get("path"),
+            "origin": src.get("repo") or src.get("urls") or src.get("path") or ", ".join(src.get("files", [])),
             "files": [{"name": _rel(f), "sha256": sha256_file(f)} for f in files],
             "conversations": 0,
             "dropped": Counter(),

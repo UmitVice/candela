@@ -1,0 +1,286 @@
+{
+  "version": "d0.2",
+  "createdAt": "2026-10-24T06:00:49+00:00",
+  "configHash": "e5b448d968abe380",
+  "config": "configs/data/d0.2.yaml",
+  "seed": 20261023,
+  "tokenizer": "gemma-4-12b-qat",
+  "maxTokens": 2048,
+  "sampleUnit": "one supervised assistant turn with its full prefix",
+  "sources": [
+    {
+      "id": "candela-traces",
+      "bucket": "candela_traces",
+      "license": "apache-2.0",
+      "origin": "data/traces/d0.2",
+      "files": [
+        {
+          "name": "ml/data/traces/d0.2/gateway-6000.jsonl",
+          "sha256": "fa2f3df5e773ef8ef39a0a444cd786dc5c9fc1732d605f62290a3fb2c02bbc6e"
+        }
+      ],
+      "conversations": 6000,
+      "dropped": {
+        "exact_duplicate": 909
+      },
+      "kept": 5091,
+      "samplesAvailable": 13306,
+      "quota": 4500,
+      "selected": 4500,
+      "tooLong": 3208
+    },
+    {
+      "id": "nemotron-agentic-finance",
+      "bucket": "agentic_finance",
+      "license": "openmdw-1.1",
+      "origin": "nvidia/Nemotron-SFT-Agentic-Finance-v1",
+      "files": [
+        {
+          "name": "hf-cache/13f0aa9f04af54af991b6c249585dc59c5047938/data/train.jsonl",
+          "sha256": "9f9d018aac68bb8c28ec650b2ae5a2617568cc4c86bcf1c672a7a77b37c4cb87"
+        }
+      ],
+      "conversations": 7878,
+      "dropped": {
+        "decontaminated": 43
+      },
+      "kept": 7835,
+      "samplesAvailable": 7835,
+      "quota": 1000,
+      "selected": 1000,
+      "tooLong": 62
+    },
+    {
+      "id": "toolace",
+      "bucket": "function_calling",
+      "license": "apache-2.0",
+      "origin": "Team-ACE/ToolACE",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/6bda777c88d21e5a204703c1ee45597a8fa4f734/data.json",
+          "sha256": "ba12c083fca7e8da48c67ad5b895e495447da7c66e39a2e19742c082e6cb537e"
+        }
+      ],
+      "conversations": 10749,
+      "dropped": {
+        "quality:empty_assistant": 5,
+        "quality:boilerplate_refusal": 2,
+        "exact_duplicate": 3
+      },
+      "kept": 10739,
+      "samplesAvailable": 13118,
+      "quota": 400,
+      "selected": 400,
+      "tooLong": 2
+    },
+    {
+      "id": "hermes-fc",
+      "bucket": "function_calling",
+      "license": "apache-2.0",
+      "origin": "NousResearch/hermes-function-calling-v1",
+      "files": [
+        {
+          "name": "hf-cache/snapshots/dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling-singleturn.json",
+          "sha256": "fb2df9fe3f295dfd65b223c2dbf04d6b90006357d737f8f8927749f0bea09527"
+        },
+        {
+          "name": "hf-cache/snapshots/dae3e1d28cfbcf4b915c04ea1e072030529b4bda/func-calling.json",
+          "sha256": "769478035a886678d525d057ea66e3fd1e247f43e35c8d6d7cc866e080b6742b"
+        }
+      ],
+      "conversations": 2027,
+      "dropped": {
+        "near_duplicate": 11
+      },
+      "kept": 2016,
+      "samplesAvailable": 2932,
+      "quota": 400,
+      "selected": 400,
+      "tooLong": 20
+    },
+    {
+      "id": "distill-numeric",
+      "bucket": "numeric_reasoning",
+      "license": "mit / cc-by-4.0 (prompts), gemma-4 base outputs (apache-2.0)",
+      "origin": "ml/data/distill/d0.2/numeric.jsonl",
+      "files": [
+        {
+          "name": "ml/data/distill/d0.2/numeric.jsonl",
+          "sha256": "052acdd558b8a4a9dc6a95a7112b0d5f0f8b1f5819545a6a260c82599f6f6417"
+        }
+      ],
+      "conversations": 1197,
+      "dropped": {
+        "near_duplicate": 119,
+        "exact_duplicate": 2
+      },
+      "kept": 1076,
+      "samplesAvailable": 1076,
+      "quota": 1394,
+      "selected": 1061,
+      "tooLong": 15
+    },
+    {
+      "id": "convfinqa",
+      "bucket": "numeric_reasoning",
+      "license": "mit",
+      "origin": {
+        "archive": "https://raw.githubusercontent.com/czyssrs/ConvFinQA/cf3eed2d5984960bf06bb8145bcea5e80b0222a6/data.zip"
+      },
+      "files": [
+        {
+          "name": "ml/data/raw/url/5318b3db7e570aab/data.zip",
+          "sha256": "d764271fae60d81b62e6d58dfc481807ebc8cfbcd633811241723c4a2101072a"
+        }
+      ],
+      "conversations": 3037,
+      "dropped": {
+        "decontaminated": 1864,
+        "near_duplicate": 1
+      },
+      "kept": 1172,
+      "samplesAvailable": 4248,
+      "quota": 306,
+      "selected": 306,
+      "tooLong": 2
+    },
+    {
+      "id": "distill-labels",
+      "bucket": "classic_labels",
+      "license": "mit (prompts), gemma-4 base outputs (apache-2.0)",
+      "origin": "ml/data/distill/d0.2/label.jsonl, ml/data/distill/d0.2/open.jsonl",
+      "files": [
+        {
+          "name": "ml/data/distill/d0.2/label.jsonl",
+          "sha256": "a34084b8d3e9c70cfec5ebd8e43eee2553f2ad732d85251678bbc5faa8fd3a32"
+        },
+        {
+          "name": "ml/data/distill/d0.2/open.jsonl",
+          "sha256": "06538e4b291281371e47f706ba89126b4a9bd717cdcec6874f0fb6db6a55ed65"
+        }
+      ],
+      "conversations": 750,
+      "dropped": {},
+      "kept": 750,
+      "samplesAvailable": 750,
+      "quota": 750,
+      "selected": 750,
+      "tooLong": 0
+    },
+    {
+      "id": "distill-general",
+      "bucket": "general_retention",
+      "license": "apache-2.0",
+      "origin": "ml/data/distill/d0.2/general.jsonl",
+      "files": [
+        {
+          "name": "ml/data/distill/d0.2/general.jsonl",
+          "sha256": "ba7a2716de0c852a5187bbac38d6dcc89b3f5a537f3e48e2f4214263f0f50dcb"
+        }
+      ],
+      "conversations": 638,
+      "dropped": {
+        "decontaminated": 1
+      },
+      "kept": 637,
+      "samplesAvailable": 637,
+      "quota": 1000,
+      "selected": 637,
+      "tooLong": 0
+    }
+  ],
+  "buckets": {
+    "candela_traces": {
+      "target": 4500,
+      "selected": 4500
+    },
+    "agentic_finance": {
+      "target": 1000,
+      "selected": 1000
+    },
+    "function_calling": {
+      "target": 800,
+      "selected": 800
+    },
+    "numeric_reasoning": {
+      "target": 1700,
+      "selected": 1367
+    },
+    "classic_labels": {
+      "target": 750,
+      "selected": 750
+    },
+    "general_retention": {
+      "target": 1000,
+      "selected": 637
+    }
+  },
+  "splits": {
+    "train": {
+      "samples": 8673,
+      "conversations": 6799,
+      "sha256": "880d89f02bcafc70943d17d1ac5c8b6086ce15c965b01b4cc4706f94653e9dfb",
+      "tokens": {
+        "total": 7629615,
+        "mean": 879.7,
+        "p50": 859,
+        "p95": 1747,
+        "max": 2047
+      }
+    },
+    "valid": {
+      "samples": 381,
+      "conversations": 298,
+      "sha256": "109bb0bc0e28bfdee7b9653af4520efd4267f362689b80732e1fa8a736cb8768",
+      "tokens": {
+        "total": 333019,
+        "mean": 874.1,
+        "p50": 841,
+        "p95": 1681,
+        "max": 1928
+      }
+    }
+  },
+  "licenses": {
+    "apache-2.0": 5937,
+    "mit / cc-by-4.0 (prompts), gemma-4 base outputs (apache-2.0)": 1061,
+    "openmdw-1.1": 1000,
+    "mit (prompts), gemma-4 base outputs (apache-2.0)": 750,
+    "mit": 306
+  },
+  "tasks": {
+    "tool_use": 4500,
+    "retention": 2448,
+    "agentic_finance": 1000,
+    "function_calling": 800,
+    "numeric_qa_conversational": 306
+  },
+  "pii": {
+    "email": 704,
+    "phone": 89,
+    "ip": 254,
+    "card": 1
+  },
+  "decontamination": {
+    "n": 13,
+    "evalTexts": {
+      "fpb": 970,
+      "fiqa_sa": 235,
+      "headlines": 20547,
+      "finqa": 1147,
+      "convfinqa": 1490,
+      "tatqa": 739,
+      "financebench": 150,
+      "ifeval": 541
+    },
+    "indexSize": 575411,
+    "hitsBySuite": {
+      "financebench": 8,
+      "finqa": 1331,
+      "tatqa": 42,
+      "convfinqa": 526,
+      "ifeval": 1
+    }
+  },
+  "buildSeconds": 728.3
+}

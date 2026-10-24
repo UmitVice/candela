@@ -3,7 +3,7 @@ model: gemma-4-12b-qat
 observatory: {modelId: candela-pro-v0.1, displayName: "Candela Pro", version: v0.1}
 data: {version: d0.2}
 lora: {numLayers: 16}
-iters: 1180
+iters: 1080
 gradAccumulation: 8
 batchSize: 1
 maxSeqLength: 2048
