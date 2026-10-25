@@ -163,6 +163,14 @@ export class GatewayService {
       this.useReplay('Replay mode is configured for this deployment.');
       return;
     }
+    if (
+      this.config.environment === 'production' &&
+      !this.config.discoveryUrl &&
+      !this.config.apiBaseUrl
+    ) {
+      this.useReplay('The live gateway has not been published yet.');
+      return;
+    }
     this.connection.update((c) => ({ ...c, state: 'connecting' }));
     let baseUrl = this.config.apiBaseUrl;
     let transport = this.config.chatTransport;
