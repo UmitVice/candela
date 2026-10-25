@@ -93,12 +93,13 @@ export class ReasoningBlock {
     return Math.max(0, (end - s.startedAt) / 1000).toFixed(1);
   });
 
+  private readonly open = computed(() => this.segment().endedAt === undefined);
+
   constructor() {
     let timer: ReturnType<typeof setInterval> | undefined;
     effect(() => {
       clearInterval(timer);
-      if (this.segment().endedAt === undefined)
-        timer = setInterval(() => this.now.set(Date.now()), 100);
+      if (this.open()) timer = setInterval(() => this.now.set(Date.now()), 100);
     });
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
