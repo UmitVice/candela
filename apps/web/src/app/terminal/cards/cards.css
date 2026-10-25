@@ -158,3 +158,120 @@ tbody tr:last-child td {
   height: 14px;
   background: var(--fg-2);
 }
+
+.ranges {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: 34px minmax(64px, auto) 1fr minmax(64px, auto);
+  align-items: center;
+  gap: 8px;
+}
+
+.range-label {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  color: var(--fg-2);
+}
+
+.range-lo {
+  text-align: right;
+  color: var(--fg-1);
+}
+
+.range-hi {
+  color: var(--fg-1);
+}
+
+.track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-2);
+}
+
+.track .span,
+.track .fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: var(--fg-2);
+}
+
+.track .span.up {
+  background: var(--up);
+}
+
+.track .span.down {
+  background: var(--down);
+}
+
+.track .fill {
+  left: 0;
+  background: rgb(56 189 248 / 0.55);
+}
+
+.track .fill.hot {
+  background: var(--accent);
+}
+
+.track .marker {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--fg-0);
+}
+
+.track .avg {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: 10px;
+  background: var(--fg-1);
+}
+
+tr.hl td {
+  color: var(--accent);
+}
+
+tr.hl td:first-child {
+  color: var(--fg-1);
+}
+
+.chip-btn {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.chip-btn:hover,
+.chip-btn:focus-visible {
+  border-color: var(--accent);
+}
+
+.chip-btn .chip-name {
+  margin-left: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+@media (max-width: 767.98px) {
+  .chip-btn {
+    min-height: 44px;
+  }
+}

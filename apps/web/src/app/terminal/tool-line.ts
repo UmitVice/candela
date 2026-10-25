@@ -1,7 +1,17 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, linkedSignal } from '@angular/core';
 import type { ToolSegment } from '../core/state/conversation.model';
 import { fmtDuration } from '../core/util/format';
 import { ResultCard } from './cards/result-card';
+
+// Approximate rendered card heights so lazily loaded cards do not shift the scrollback.
+const PLACEHOLDER_HEIGHTS: Record<string, number> = {
+  quote: 252,
+  price_history: 470,
+  indicators: 860,
+  fundamentals: 420,
+  forecast: 560,
+  symbols: 110,
+};
 
 @Component({
   selector: 'cd-tool-line',
@@ -43,12 +53,22 @@ import { ResultCard } from './cards/result-card';
       }
     </button>
     @if (open() && expandable()) {
-      <cd-result-card [segment]="s" />
+      @defer (on viewport) {
+        <cd-result-card [segment]="s" />
+      } @placeholder {
+        <div class="placeholder" [style.height.px]="placeholderHeight()" aria-hidden="true"></div>
+      }
     }
   `,
   styles: `
     :host {
       display: block;
+    }
+    .placeholder {
+      margin: 4px 0 8px 18px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg-1);
     }
     .line {
       display: flex;
@@ -121,12 +141,15 @@ import { ResultCard } from './cards/result-card';
 })
 export class ToolLine {
   readonly segment = input.required<ToolSegment>();
-  protected readonly open = signal(false);
+  protected readonly open = linkedSignal(() => this.expandable() && !!this.segment().data);
   protected readonly fmtDuration = fmtDuration;
   protected readonly expandable = computed(() => {
     const s = this.segment();
     return s.status !== 'running' && (!!s.data || !!s.error);
   });
+  protected readonly placeholderHeight = computed(
+    () => PLACEHOLDER_HEIGHTS[this.segment().data?.kind ?? ''] ?? 120,
+  );
   protected readonly args = computed(() =>
     Object.entries(this.segment().args)
       .filter(([key]) => key !== 'limit')

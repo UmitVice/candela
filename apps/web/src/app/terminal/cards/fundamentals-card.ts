@@ -1,6 +1,22 @@
 import { Component, computed, input } from '@angular/core';
 import type { FundamentalPeriod, Fundamentals } from '../../core/api/types';
-import { fmtPct } from '../../core/util/format';
+import { arrowOf, fmtBig, fmtPct } from '../../core/util/format';
+
+interface Row {
+  label: string;
+  values: string[];
+  tones?: string[];
+  highlight?: boolean;
+}
+
+function ratio(a: number | undefined, b: number | undefined): number | undefined {
+  return a === undefined || b === undefined || b === 0 ? undefined : (a / b) * 100;
+}
+
+function pctCell(value: number | undefined, signed: boolean): string {
+  if (value === undefined || !Number.isFinite(value)) return '—';
+  return signed ? `${arrowOf(value)} ${fmtPct(value)}`.trim() : `${value.toFixed(1)}%`;
+}
 
 const METRICS: { key: keyof FundamentalPeriod; label: string; kind: 'usd' | 'eps' }[] = [
   { key: 'revenue', label: 'Revenue', kind: 'usd' },
@@ -18,11 +34,7 @@ const METRICS: { key: keyof FundamentalPeriod; label: string; kind: 'usd' | 'eps
 
 function money(value: number | string | undefined, kind: 'usd' | 'eps'): string {
   if (typeof value !== 'number') return '—';
-  if (kind === 'eps') return value.toFixed(2);
-  const abs = Math.abs(value);
-  if (abs >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-  return value.toLocaleString('en-US');
+  return kind === 'eps' ? value.toFixed(2) : fmtBig(value);
 }
 
 @Component({
@@ -51,10 +63,10 @@ function money(value: number | string | undefined, kind: 'usd' | 'eps'): string 
         </thead>
         <tbody>
           @for (row of rows(); track row.label) {
-            <tr>
+            <tr [class.hl]="row.highlight">
               <td>{{ row.label }}</td>
               @for (v of row.values; track $index) {
-                <td>{{ v }}</td>
+                <td [class]="row.tones?.[$index] ?? ''">{{ v }}</td>
               }
             </tr>
           }
@@ -75,14 +87,41 @@ function money(value: number | string | undefined, kind: 'usd' | 'eps'): string 
 export class FundamentalsCard {
   readonly fundamentals = input.required<Fundamentals>();
 
-  protected readonly rows = computed(() =>
-    METRICS.filter((m) => this.fundamentals().periods.some((p) => p[m.key] !== undefined)).map(
-      (m) => ({
-        label: m.label,
-        values: this.fundamentals().periods.map((p) => money(p[m.key], m.kind)),
-      }),
-    ),
-  );
+  protected readonly rows = computed<Row[]>(() => {
+    const periods = this.fundamentals().periods;
+    const base: Row[] = METRICS.filter((m) => periods.some((p) => p[m.key] !== undefined)).map(
+      (m) => ({ label: m.label, values: periods.map((p) => money(p[m.key], m.kind)) }),
+    );
+    const prior = (p: FundamentalPeriod) =>
+      periods.find((q) => q.fiscalPeriod === p.fiscalPeriod && q.fiscalYear === p.fiscalYear - 1);
+    const growth = (key: 'revenue' | 'epsDiluted') =>
+      periods.map((p) => {
+        const before = prior(p)?.[key];
+        const now = p[key];
+        return now === undefined || before === undefined || before === 0
+          ? undefined
+          : ((now - before) / Math.abs(before)) * 100;
+      });
+    const margin = (key: keyof FundamentalPeriod) =>
+      periods.map((p) => ratio(p[key] as number | undefined, p.revenue));
+    const derived: { label: string; values: (number | undefined)[]; signed: boolean }[] = [
+      { label: 'Gross margin', values: margin('grossProfit'), signed: false },
+      { label: 'Operating margin', values: margin('operatingIncome'), signed: false },
+      { label: 'Net margin', values: margin('netIncome'), signed: false },
+      { label: 'FCF margin', values: margin('freeCashFlow'), signed: false },
+      { label: 'Revenue growth YoY', values: growth('revenue'), signed: true },
+      { label: 'EPS growth YoY', values: growth('epsDiluted'), signed: true },
+    ];
+    const highlighted = derived
+      .filter((d) => d.values.some((v) => v !== undefined))
+      .map((d) => ({
+        label: d.label,
+        highlight: true,
+        values: d.values.map((v) => pctCell(v, d.signed)),
+        tones: d.values.map((v) => (d.signed && v !== undefined ? (v >= 0 ? 'up' : 'down') : '')),
+      }));
+    return [...base, ...highlighted];
+  });
 
   protected readonly ratios = computed(() => {
     const r = this.fundamentals().ratios;
@@ -94,9 +133,9 @@ export class FundamentalsCard {
     pct('Net margin', r.netMarginPct);
     pct('FCF margin', r.fcfMarginPct);
     if (r.revenueGrowthPct !== undefined)
-      out.push({ label: 'Revenue growth', value: fmtPct(r.revenueGrowthPct) });
+      out.push({ label: 'Revenue growth', value: pctCell(r.revenueGrowthPct, true) });
     if (r.epsGrowthPct !== undefined)
-      out.push({ label: 'EPS growth', value: fmtPct(r.epsGrowthPct) });
+      out.push({ label: 'EPS growth', value: pctCell(r.epsGrowthPct, true) });
     if (r.debtToAssets !== undefined)
       out.push({ label: 'Debt/assets', value: r.debtToAssets.toFixed(3) });
     return out;

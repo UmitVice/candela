@@ -1,19 +1,19 @@
 import { Component, computed, input } from '@angular/core';
 import type { Forecast } from '../../core/api/types';
-import { fmtPct, fmtPrice } from '../../core/util/format';
+import { arrowOf, fmtPct, fmtPrice } from '../../core/util/format';
+import { ForecastFan } from '../charts/forecast-fan';
 
 @Component({
   selector: 'cd-forecast-card',
+  imports: [ForecastFan],
   template: `
     @let f = forecast();
     <div class="headline">
       <span class="big">{{ f.symbol }} · forecast</span>
-      <span class="muted"
-        >base {{ fmtPrice(f.basePrice) }} ·
-        {{ f.source === 'baseline' ? 'statistical baseline' : f.source }} · as of {{ f.asOf }}</span
-      >
+      <span class="muted">base {{ fmtPrice(f.basePrice) }} · as of {{ f.asOf }}</span>
     </div>
-    <div class="table-wrap">
+    <cd-forecast-fan [forecast]="f" />
+    <div class="table-wrap" style="margin-top: 10px">
       <table>
         <thead>
           <tr>
@@ -32,7 +32,9 @@ import { fmtPct, fmtPrice } from '../../core/util/format';
               <td>{{ fmtPrice(h.p10) }}</td>
               <td>{{ fmtPrice(h.p50) }}</td>
               <td>{{ fmtPrice(h.p90) }}</td>
-              <td [class]="h.delta >= 0 ? 'up' : 'down'">{{ fmtPct(h.delta) }}</td>
+              <td [class]="h.delta >= 0 ? 'up' : 'down'">
+                {{ arrowOf(h.delta) }} {{ fmtPct(h.delta) }}
+              </td>
               <td class="bar-cell">
                 <div class="fan" [attr.aria-label]="'P10 to P90 band for ' + h.months + ' months'">
                   <div class="fan-band" [style.left.%]="h.left" [style.width.%]="h.width"></div>
@@ -53,6 +55,7 @@ export class ForecastCard {
   readonly forecast = input.required<Forecast>();
   protected readonly fmtPrice = fmtPrice;
   protected readonly fmtPct = fmtPct;
+  protected readonly arrowOf = arrowOf;
 
   protected readonly rows = computed(() => {
     const f = this.forecast();

@@ -1,19 +1,19 @@
 import { Component, computed, input } from '@angular/core';
 import type { IndicatorSet, PriceHistory } from '../../core/api/types';
 import { fmtNumber, fmtPrice } from '../../core/util/format';
-import { Sparkline } from './sparkline';
+import { IndicatorsChart } from '../charts/indicators-chart';
 
 @Component({
   selector: 'cd-indicators-card',
-  imports: [Sparkline],
+  imports: [IndicatorsChart],
   template: `
     @let l = indicators().latest;
     <div class="headline">
       <span class="big">{{ indicators().symbol }} · technicals</span>
       <span class="muted">{{ indicators().range }} · as of {{ indicators().asOf }}</span>
     </div>
-    <cd-sparkline [values]="rsiSeries()" [label]="'RSI 14 over ' + indicators().range" />
-    <div class="table-wrap">
+    <cd-indicators-chart [indicators]="indicators()" [history]="history()" />
+    <div class="table-wrap spaced">
       <table>
         <thead>
           <tr>
@@ -42,24 +42,18 @@ import { Sparkline } from './sparkline';
         }
       </div>
     }
-    <div class="note">
-      Deterministic indicators computed from
-      {{ history()?.bars?.length ?? indicators().series.length }} daily closes. Sparkline shows RSI
-      14.
-    </div>
   `,
   styleUrl: './cards.css',
+  styles: `
+    .spaced {
+      margin-top: 12px;
+    }
+  `,
 })
 export class IndicatorsCard {
   readonly indicators = input.required<IndicatorSet>();
   readonly history = input<PriceHistory>();
   protected readonly fmtPrice = fmtPrice;
-
-  protected readonly rsiSeries = computed(() =>
-    this.indicators()
-      .series.map((p) => p.rsi14)
-      .filter((v): v is number => v !== undefined),
-  );
 
   protected readonly rows = computed(() => {
     const l = this.indicators().latest;
@@ -67,7 +61,7 @@ export class IndicatorsCard {
       if (v === undefined) return { note: '—', tone: '' };
       const d = ((l.close - v) / v) * 100;
       return {
-        note: `${d >= 0 ? 'above' : 'below'} ${Math.abs(d).toFixed(2)}%`,
+        note: `${d >= 0 ? '▲ above' : '▼ below'} ${Math.abs(d).toFixed(2)}%`,
         tone: d >= 0 ? 'up' : 'down',
       };
     };
