@@ -64,6 +64,7 @@ export function lightweightBase(theme: ChartTheme, compact: boolean) {
       vertLine: { color: theme.lineStrong, labelBackgroundColor: theme.lineStrong },
       horzLine: { color: theme.lineStrong, labelBackgroundColor: theme.lineStrong },
     },
-    handleScroll: { vertTouchDrag: false },
+    handleScroll: { mouseWheel: false, vertTouchDrag: false },
+    handleScale: { mouseWheel: false },
   };
 }

@@ -51,6 +51,7 @@
 }
 
 .scrollback {
+  position: relative;
   flex: 1;
   min-height: 0;
   padding: 16px 0 24px;
@@ -58,6 +59,7 @@
 }
 
 .turn-wrap {
+  contain: layout style;
   padding: 6px 0;
 }
 
