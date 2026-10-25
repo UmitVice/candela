@@ -58,6 +58,7 @@ export interface AssistantTurn {
   finishReason?: FinishReason;
   error?: StreamErrorEvent & { at: string };
   feedback?: 1 | -1;
+  feedbackSent?: boolean;
 }
 
 export interface SystemTurn {

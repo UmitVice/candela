@@ -9,6 +9,7 @@ const DEFAULT_WATCHLIST = ['NVDA', 'AAPL', 'MSFT', 'AMD', 'TSLA', 'GOOGL'];
 interface StoredPreferences {
   model: ModelPreference;
   reasoning: boolean;
+  telemetry: boolean;
   railCollapsed: boolean;
   contextOpen: boolean;
   watchlist: string[];
@@ -45,6 +46,7 @@ export class PreferencesStore {
   private readonly initial = read<StoredPreferences>(KEY, {
     model: 'auto',
     reasoning: true,
+    telemetry: false,
     railCollapsed: false,
     contextOpen: true,
     watchlist: DEFAULT_WATCHLIST,
@@ -54,6 +56,7 @@ export class PreferencesStore {
     ['auto', 'pro'].includes(this.initial.model) ? this.initial.model : 'auto',
   );
   readonly reasoning = signal(this.initial.reasoning !== false);
+  readonly telemetry = signal(this.initial.telemetry === true);
   readonly railCollapsed = signal(!!this.initial.railCollapsed);
   readonly contextOpen = signal(this.initial.contextOpen !== false);
   readonly watchlist = signal<string[]>(
@@ -66,6 +69,7 @@ export class PreferencesStore {
       write(KEY, {
         model: this.model(),
         reasoning: this.reasoning(),
+        telemetry: this.telemetry(),
         railCollapsed: this.railCollapsed(),
         contextOpen: this.contextOpen(),
         watchlist: this.watchlist(),

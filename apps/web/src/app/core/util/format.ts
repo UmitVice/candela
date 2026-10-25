@@ -43,3 +43,17 @@ export function toneOf(value: number | undefined): 'up' | 'down' | '' {
   if (value === undefined || value === 0) return '';
   return value > 0 ? 'up' : 'down';
 }
+
+export function arrowOf(value: number | undefined): '▲' | '▼' | '' {
+  if (value === undefined || value === 0 || !Number.isFinite(value)) return '';
+  return value > 0 ? '▲' : '▼';
+}
+
+export function fmtBig(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(abs >= 1e11 ? 0 : 1)}B`;
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+  return integer.format(value);
+}

@@ -1,5 +1,6 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { NavigationStart, Router } from '@angular/router';
 import type { ChatMessage, ChatRequest, ChatStreamEvent } from '../api/types';
 import { GatewayService } from '../gateway/gateway.service';
 import { MarketService } from '../gateway/market.service';
@@ -33,6 +34,17 @@ export class ChatService {
   readonly activeTurnId = computed(() => this.run()?.turnId ?? null);
   readonly lastUsage = signal<{ tokensPerSecond: number; modelId: string } | null>(null);
 
+  constructor() {
+    inject(Router).events.subscribe((event) => {
+      if (event instanceof NavigationStart) this.stop();
+    });
+    effect(() => {
+      const active = this.store.activeId();
+      const run = this.run();
+      if (run && run.conversationId !== active) run.controller.abort();
+    });
+  }
+
   async send(content: string, command?: string): Promise<void> {
     const text = content.trim().slice(0, MAX_CONTENT);
     if (!text || this.busy()) return;
@@ -61,25 +73,55 @@ export class ChatService {
   rate(turnId: string, rating: 1 | -1): void {
     const conversation = this.store.active();
     if (!conversation) return;
-    const turn = conversation.turns.find(
-      (t): t is AssistantTurn => t.id === turnId && t.kind === 'assistant',
-    );
-    if (!turn) return;
+    const turn = this.assistantTurn(conversation, turnId);
+    if (!turn || turn.feedbackSent) return;
     const next = turn.feedback === rating ? undefined : rating;
     this.store.updateAssistant(conversation.id, turnId, (t) => ({ ...t, feedback: next }), true);
-    if (next && turn.messageId) {
-      void this.market.feedback({
-        conversationId: conversation.id,
-        messageId: turn.messageId,
-        rating: next,
-        consentToStore: false,
-      });
-    }
   }
 
-  private buildRequest(conversation: Conversation): ChatRequest {
+  async submitFeedback(
+    turnId: string,
+    input: { reason: string; consentToStore: boolean },
+  ): Promise<boolean> {
+    const conversation = this.store.active();
+    if (!conversation) return false;
+    const turn = this.assistantTurn(conversation, turnId);
+    if (!turn?.feedback || !turn.messageId || turn.feedbackSent) return false;
+    const reason = input.reason.trim().slice(0, 500);
+    const ok = await this.market.feedback({
+      conversationId: conversation.id,
+      messageId: turn.messageId,
+      rating: turn.feedback,
+      ...(reason ? { reason } : {}),
+      consentToStore: input.consentToStore,
+      ...(input.consentToStore ? { transcript: this.transcriptUntil(conversation, turnId) } : {}),
+    });
+    if (ok) {
+      this.store.updateAssistant(
+        conversation.id,
+        turnId,
+        (t) => ({ ...t, feedbackSent: true }),
+        true,
+      );
+    }
+    return ok;
+  }
+
+  private assistantTurn(conversation: Conversation, turnId: string): AssistantTurn | undefined {
+    return conversation.turns.find(
+      (t): t is AssistantTurn => t.id === turnId && t.kind === 'assistant',
+    );
+  }
+
+  private transcriptUntil(conversation: Conversation, turnId: string): ChatMessage[] {
+    const end = conversation.turns.findIndex((t) => t.id === turnId);
+    const turns = conversation.turns.slice(0, end + 1);
+    return this.messagesOf(turns).slice(-MAX_MESSAGES);
+  }
+
+  private messagesOf(turns: Conversation['turns']): ChatMessage[] {
     const messages: ChatMessage[] = [];
-    for (const turn of conversation.turns) {
+    for (const turn of turns) {
       if (turn.kind === 'user')
         messages.push({ role: 'user', content: turn.content.slice(0, MAX_CONTENT) });
       else if (turn.kind === 'assistant' && turn.status === 'done') {
@@ -87,14 +129,25 @@ export class ChatService {
         if (content) messages.push({ role: 'assistant', content: content.slice(0, MAX_CONTENT) });
       }
     }
-    let trimmed = messages.slice(-MAX_MESSAGES);
+    return messages;
+  }
+
+  private buildRequest(conversation: Conversation): ChatRequest {
+    let trimmed = this.messagesOf(conversation.turns).slice(-MAX_MESSAGES);
     while (trimmed[0] && trimmed[0].role !== 'user') trimmed = trimmed.slice(1);
     return {
       conversationId: conversation.id,
       messages: trimmed,
-      model: this.prefs.model(),
-      options: { reasoning: this.prefs.reasoning() },
+      model: this.requestedModel(),
+      options: { reasoning: this.prefs.reasoning(), telemetry: this.prefs.telemetry() },
     };
+  }
+
+  // The preference is a tier; the gateway expects 'auto' or a concrete model id.
+  private requestedModel(): string {
+    if (this.prefs.model() !== 'pro' || this.gateway.isReplay()) return 'auto';
+    const pro = this.gateway.status()?.models.find((m) => m.tier === 'pro');
+    return pro?.id ?? 'auto';
   }
 
   private async respond(conversationId: string): Promise<void> {
@@ -152,6 +205,21 @@ export class ChatService {
     this.store.touch(conversationId);
     this.run.set(null);
     this.announce(conversationId, turnId);
+    if (
+      transport.kind !== 'replay' &&
+      terminal.event === 'error' &&
+      (terminal.data.code === 'upstream_unavailable' || terminal.data.code === 'upstream_timeout')
+    ) {
+      const live = await this.gateway.refresh(
+        'The gateway disconnected mid-session. Switched to replay without losing your sessions.',
+      );
+      if (!live) {
+        void this.announcer.announce(
+          'The Candela gateway went offline. Switched to replay mode.',
+          'assertive',
+        );
+      }
+    }
   }
 
   private announce(conversationId: string, turnId: string): void {
@@ -175,6 +243,15 @@ export class ChatService {
       .replace(/[*_`#>|]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+    if (!text) {
+      void this.announcer.announce(
+        turn.finishReason === 'length'
+          ? 'Candela stopped at the token limit before writing an answer.'
+          : 'Candela finished without a written answer.',
+        'polite',
+      );
+      return;
+    }
     void this.announcer.announce(
       `Candela answered: ${text.slice(0, 220)}${text.length > 220 ? '…' : ''}`,
       'polite',

@@ -21,6 +21,8 @@ export interface Connection {
 
 const PROBE_TIMEOUT_MS = 3500;
 const RECHECK_MS = 120_000;
+const POLL_MS = 30_000;
+const FOCUS_THROTTLE_MS = 5_000;
 
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
   const controller = new AbortController();
@@ -88,24 +90,74 @@ export class GatewayService {
     () => this.status()?.dataProviders.find((p) => p.id === 'snapshot')?.asOf ?? null,
   );
 
+  private lastRefreshAt = 0;
+
   constructor() {
     const onOnline = () => void this.connect();
+    const onFocus = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - this.lastRefreshAt < FOCUS_THROTTLE_MS) return;
+      void this.refresh();
+    };
+    const poll = setInterval(() => {
+      if (document.visibilityState === 'visible' && this.connection().mode === 'live') {
+        void this.refresh();
+      }
+    }, POLL_MS);
     window.addEventListener('online', onOnline);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
     inject(DestroyRef).onDestroy(() => {
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+      clearInterval(poll);
       clearTimeout(this.recheckTimer);
     });
   }
 
-  connect(): Promise<void> {
-    this.probing ??= this.runProbe().finally(() => {
+  // Re-reads /status for the current gateway; when it no longer answers, a full probe runs
+  // (discovery may hand out a new tunnel URL) and falls back to replay without a reload.
+  async refresh(reason = 'The Candela gateway stopped responding.'): Promise<boolean> {
+    if (this.forcedReplay) return false;
+    this.lastRefreshAt = Date.now();
+    if (this.probing) {
+      await this.probing;
+      return this.connection().mode === 'live';
+    }
+    const c = this.connection();
+    if (c.mode !== 'live' || c.state !== 'online') {
+      await this.connect();
+      return this.connection().mode === 'live';
+    }
+    try {
+      const status = await fetchJson<StatusResponse>(
+        `${c.baseUrl}/api/v1/status`,
+        PROBE_TIMEOUT_MS,
+      );
+      if (!status || !Array.isArray(status.models)) throw new Error('invalid status');
+      this.status.set(status);
+      this.connection.update((current) => ({
+        ...current,
+        reason: status.route === 'unavailable' ? 'No model is available behind the gateway.' : '',
+        checkedAt: new Date().toISOString(),
+      }));
+      return true;
+    } catch {
+      await this.connect(reason);
+      return this.connection().mode === 'live';
+    }
+  }
+
+  connect(failureReason?: string): Promise<void> {
+    this.probing ??= this.runProbe(failureReason).finally(() => {
       this.probing = null;
       this.ready.set(true);
     });
     return this.probing;
   }
 
-  private async runProbe(): Promise<void> {
+  private async runProbe(failureReason?: string): Promise<void> {
     clearTimeout(this.recheckTimer);
     if (this.config.mode === 'replay') {
       this.useReplay('Replay mode is configured for this deployment.');
@@ -145,7 +197,7 @@ export class GatewayService {
         checkedAt: new Date().toISOString(),
       });
     } catch {
-      this.useReplay('The Candela gateway did not respond.');
+      this.useReplay(failureReason ?? 'The Candela gateway did not respond.');
     }
   }
 
