@@ -57,6 +57,7 @@
               [isLast]="turn.id === lastAssistantId()"
               [busy]="chat.busy()"
               (rate)="chat.rate(turn.id, $event)"
+              (feedback)="submitFeedback(turn.id, $event)"
               (regenerate)="chat.regenerate(turn.id)"
             />
           }

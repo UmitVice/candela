@@ -1,7 +1,9 @@
-import { Component, computed, inject, output } from '@angular/core';
+import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { RUNTIME_CONFIG } from '../core/config/runtime-config';
 import { ChatService } from '../core/chat/chat.service';
 import { GatewayService } from '../core/gateway/gateway.service';
+import { MarketService } from '../core/gateway/market.service';
+import { ConversationsStore } from '../core/state/conversations.store';
 import { PwaService } from '../core/pwa/pwa.service';
 import { ModelStatusService } from './model-status.service';
 
@@ -23,8 +25,16 @@ import { ModelStatusService } from './model-status.service';
     @if (pwa.offline()) {
       <span class="seg warn">offline</span>
     }
+    @if (queueText(); as qt) {
+      <span class="seg warn">{{ qt }}</span>
+    }
+    @if (market.throttledUntil() > now()) {
+      <span class="seg warn hide-sm">market data throttled</span>
+    }
     <span class="grow"></span>
-    @if (chat.busy()) {
+    @if (activeQueue(); as q) {
+      <span class="seg warn">queued #{{ q.position }}</span>
+    } @else if (chat.busy()) {
       <span class="seg busy">streaming…</span>
     } @else if (models.tokensPerSecond()) {
       <span class="seg">{{ models.tokensPerSecond() }} tok/s</span>
@@ -110,7 +120,28 @@ export class StatusLine {
   protected readonly models = inject(ModelStatusService);
   protected readonly pwa = inject(PwaService);
   protected readonly config = inject(RUNTIME_CONFIG);
+  protected readonly market = inject(MarketService);
+  private readonly store = inject(ConversationsStore);
   readonly openStatus = output();
+  protected readonly now = signal(Date.now());
+
+  constructor() {
+    const timer = setInterval(() => this.now.set(Date.now()), 5000);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+
+  protected readonly queueText = computed(() => {
+    const status = this.gateway.status();
+    if (this.gateway.isReplay() || !status || status.queue.depth === 0) return '';
+    return `queue ${status.queue.depth}/${status.queue.maxDepth}`;
+  });
+
+  protected readonly activeQueue = computed(() => {
+    const id = this.chat.activeTurnId();
+    if (!id) return null;
+    const turn = this.store.active()?.turns.find((t) => t.id === id);
+    return turn?.kind === 'assistant' && turn.status === 'queued' ? (turn.queue ?? null) : null;
+  });
 
   protected readonly tone = computed(() => {
     const c = this.gateway.connection();

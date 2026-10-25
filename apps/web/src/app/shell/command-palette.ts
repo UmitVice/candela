@@ -1,9 +1,11 @@
 import { DialogRef } from '@angular/cdk/dialog';
 import type { ElementRef } from '@angular/core';
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideSearch } from '@lucide/angular';
+import type { SymbolMatch } from '../core/api/types';
 import { COMMANDS, CommandService } from '../core/commands/commands';
+import { MarketService } from '../core/gateway/market.service';
 import { ConversationsStore } from '../core/state/conversations.store';
 import { downloadMarkdown } from '../core/state/export';
 import { PreferencesStore } from '../core/state/preferences.store';
@@ -11,7 +13,7 @@ import { ShellStateService } from './shell-state.service';
 
 interface PaletteItem {
   id: string;
-  group: 'Commands' | 'Sessions' | 'Actions';
+  group: 'Commands' | 'Symbols' | 'Conversations' | 'Settings' | 'Actions';
   label: string;
   hint: string;
   run: () => void;
@@ -26,12 +28,12 @@ interface PaletteItem {
       <input
         #input
         role="combobox"
-        aria-label="Search commands and sessions"
+        aria-label="Search commands, symbols, conversations and settings"
         aria-controls="palette-list"
         aria-expanded="true"
         aria-autocomplete="list"
         [attr.aria-activedescendant]="items()[active()] ? 'pal-' + items()[active()]?.id : null"
-        placeholder="Type a command or search sessions…"
+        placeholder="Commands, symbols, conversations, settings…"
         autocomplete="off"
         spellcheck="false"
         [value]="query()"
@@ -73,10 +75,29 @@ export class CommandPalette {
   private readonly prefs = inject(PreferencesStore);
   private readonly shell = inject(ShellStateService);
   private readonly router = inject(Router);
+  private readonly market = inject(MarketService);
   private readonly input = viewChild.required<ElementRef<HTMLInputElement>>('input');
 
   protected readonly query = signal('');
   protected readonly active = signal(0);
+  private readonly symbols = signal<SymbolMatch[]>([]);
+
+  constructor() {
+    let seq = 0;
+    effect((onCleanup) => {
+      const q = this.query().trim().replace(/^\$/, '');
+      const id = ++seq;
+      if (!q || q.startsWith('/') || q.length > 32) {
+        this.symbols.set([]);
+        return;
+      }
+      const timer = setTimeout(async () => {
+        const results = await this.market.search(q, 5);
+        if (id === seq) this.symbols.set(results);
+      }, 160);
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
 
   private readonly all = computed<PaletteItem[]>(() => {
     const commandItems: PaletteItem[] = COMMANDS.map((c) => ({
@@ -95,15 +116,43 @@ export class CommandPalette {
       .slice(0, 12)
       .map((c) => ({
         id: `ses-${c.id}`,
-        group: 'Sessions',
+        group: 'Conversations',
         label: c.title,
-        hint: c.id === this.store.activeId() ? 'current' : 'open session',
+        hint: c.id === this.store.activeId() ? 'current' : 'open conversation',
         run: () => {
           this.store.select(c.id);
           void this.router.navigate(['/']);
         },
       }));
     const active = this.store.active();
+    const settings: PaletteItem[] = [
+      {
+        id: 'set-reasoning',
+        group: 'Settings',
+        label: `Reasoning: ${this.prefs.reasoning() ? 'on' : 'off'}`,
+        hint: this.prefs.reasoning() ? 'turn off thinking tokens' : 'show thinking tokens',
+        run: () => this.prefs.reasoning.update((v) => !v),
+      },
+      {
+        id: 'set-telemetry',
+        group: 'Settings',
+        label: `Telemetry: ${this.prefs.telemetry() ? 'on' : 'off'}`,
+        hint: this.prefs.telemetry()
+          ? 'stop streaming model internals'
+          : 'stream model internals for the Observatory',
+        run: () => this.prefs.telemetry.update((v) => !v),
+      },
+      {
+        id: 'set-model',
+        group: 'Settings',
+        label: `Model: ${this.prefs.model() === 'pro' ? 'Candela Pro only' : 'auto'}`,
+        hint:
+          this.prefs.model() === 'pro'
+            ? 'switch to auto routing'
+            : 'require the Candela Pro GPU worker',
+        run: () => this.prefs.model.update((m) => (m === 'pro' ? 'auto' : 'pro')),
+      },
+    ];
     const actions: PaletteItem[] = [
       {
         id: 'act-context',
@@ -131,17 +180,33 @@ export class CommandPalette {
           ]
         : []),
     ];
-    return [...commandItems, ...actions, ...sessions];
+    return [...commandItems, ...settings, ...actions, ...sessions];
   });
+
+  private readonly symbolItems = computed<PaletteItem[]>(() =>
+    this.symbols().map((m) => ({
+      id: `sym-${m.symbol}`,
+      group: 'Symbols',
+      label: m.symbol,
+      hint: `${m.name} · ${m.exchange} · prefill /analyze`,
+      run: () => {
+        this.shell.pinnedSymbol.set(m.symbol);
+        this.shell.insert(`/analyze ${m.symbol}`);
+        void this.router.navigate(['/']);
+      },
+    })),
+  );
 
   protected readonly items = computed(() => {
     const q = this.query().trim().toLowerCase().replace(/^\//, '');
     if (!q) return this.all();
-    return this.all().filter(
+    const matches = this.all().filter(
       (item) =>
         item.label.toLowerCase().replace(/^\//, '').includes(q) ||
         item.hint.toLowerCase().includes(q),
     );
+    const commands = matches.filter((i) => i.group === 'Commands');
+    return [...commands, ...this.symbolItems(), ...matches.filter((i) => i.group !== 'Commands')];
   });
 
   protected onInput(value: string): void {

@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ConversationsStore } from '../core/state/conversations.store';
 import { PreferencesStore } from '../core/state/preferences.store';
 
@@ -32,6 +32,13 @@ export class ShellStateService {
   readonly focusSymbol = computed(
     () => this.pinnedSymbol() ?? this.lastToolSymbol() ?? this.prefs.watchlist()[0] ?? null,
   );
+
+  constructor() {
+    effect(() => {
+      this.lastToolSymbol();
+      untracked(() => this.pinnedSymbol.set(null));
+    });
+  }
 
   insert(text: string): void {
     this.draft.set({ text, nonce: Date.now() });

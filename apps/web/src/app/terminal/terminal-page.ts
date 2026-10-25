@@ -1,6 +1,15 @@
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import type { ElementRef } from '@angular/core';
-import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideArrowUp } from '@lucide/angular';
@@ -76,6 +85,18 @@ export class TerminalPage {
       this.stick.set(true);
     });
 
+    // Lazily rendered cards and charts grow the log after the stream event that created them.
+    let observer: ResizeObserver | undefined;
+    afterNextRender(() => {
+      const content = this.scrollEl().nativeElement.firstElementChild;
+      if (!content) return;
+      observer = new ResizeObserver(() => {
+        if (this.stick()) this.scrollToBottom(false);
+      });
+      observer.observe(content);
+    });
+    inject(DestroyRef).onDestroy(() => observer?.disconnect());
+
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       if (params.get('new') === '1') {
         this.store.newConversation();
@@ -114,6 +135,13 @@ export class TerminalPage {
   protected submit(text: string): void {
     this.stick.set(true);
     if (!this.commands.execute(text)) void this.chat.send(text);
+  }
+
+  protected async submitFeedback(
+    turnId: string,
+    event: { reason: string; consentToStore: boolean; done: (ok: boolean) => void },
+  ): Promise<void> {
+    event.done(await this.chat.submitFeedback(turnId, event));
   }
 
   protected suggest(text: string): void {

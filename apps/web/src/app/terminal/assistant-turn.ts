@@ -42,6 +42,17 @@ export class AssistantTurnView {
   readonly busy = input(false);
   readonly rate = output<1 | -1>();
   readonly regenerate = output();
+  readonly feedback = output<{
+    reason: string;
+    consentToStore: boolean;
+    done: (ok: boolean) => void;
+  }>();
+
+  protected readonly reason = signal('');
+  protected readonly consent = signal(false);
+  protected readonly sending = signal(false);
+  protected readonly feedbackDismissed = signal(false);
+  protected readonly feedbackError = signal('');
 
   protected readonly copied = signal(false);
   protected readonly fmtClock = fmtClock;
@@ -76,6 +87,21 @@ export class AssistantTurnView {
     return this.turn()
       .segments.slice(index + 1)
       .some((s) => s.type === 'answer' || s.type === 'tool');
+  }
+
+  protected sendFeedback(event: Event): void {
+    event.preventDefault();
+    if (this.sending()) return;
+    this.sending.set(true);
+    this.feedbackError.set('');
+    this.feedback.emit({
+      reason: this.reason(),
+      consentToStore: this.consent(),
+      done: (ok) => {
+        this.sending.set(false);
+        if (!ok) this.feedbackError.set('Could not send feedback. Try again later.');
+      },
+    });
   }
 
   protected copy(): void {

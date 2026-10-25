@@ -18,9 +18,12 @@
     <div class="waiting mono" aria-hidden="true"><span class="cursor">▋</span></div>
   }
   @if (t.status === 'queued' && t.queue) {
-    <div class="queued mono">
-      ⧗ queued · position {{ t.queue.position
-      }}{{ t.queue.etaMs ? ' · ~' + (t.queue.etaMs / 1000).toFixed(0) + ' s' : '' }}
+    <div class="queued mono" role="status">
+      <span>⧗ queued · position {{ t.queue.position }}</span>
+      @if (t.queue.etaMs) {
+        <span>· ~{{ (t.queue.etaMs / 1000).toFixed(0) }} s</span>
+      }
+      <span class="queue-note">Candela serves one conversation at a time on a single GPU.</span>
     </div>
   }
 
@@ -46,7 +49,12 @@
   }
 
   @if (t.status === 'error') {
-    <cd-error-block [turn]="t" [disabled]="busy()" (retry)="regenerate.emit()" />
+    <cd-error-block
+      [turn]="t"
+      [disabled]="busy()"
+      [retryable]="isLast()"
+      (retry)="regenerate.emit()"
+    />
   }
 
   @if (!streaming() && t.status !== 'error') {
@@ -116,5 +124,41 @@
         }
       </span>
     </footer>
+    @if (t.feedback && !t.feedbackSent && t.messageId && !feedbackDismissed()) {
+      <form class="feedback" (submit)="sendFeedback($event)" aria-label="Feedback">
+        <label class="fb-label" [for]="'fb-' + t.id">
+          {{ t.feedback === 1 ? 'What was good?' : 'What went wrong?' }}
+          <span class="fb-optional">optional</span>
+        </label>
+        <textarea
+          [id]="'fb-' + t.id"
+          class="fb-reason"
+          rows="2"
+          maxlength="500"
+          [value]="reason()"
+          (input)="reason.set($any($event.target).value)"
+        ></textarea>
+        <label class="fb-consent">
+          <input
+            type="checkbox"
+            [checked]="consent()"
+            (change)="consent.set($any($event.target).checked)"
+          />
+          Store this conversation with my rating to help improve Candela
+        </label>
+        <div class="fb-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="sending()">
+            Send feedback
+          </button>
+          <button type="button" class="btn" (click)="feedbackDismissed.set(true)">Not now</button>
+          @if (feedbackError()) {
+            <span class="fb-error" role="alert">{{ feedbackError() }}</span>
+          }
+        </div>
+      </form>
+    }
+    @if (t.feedbackSent) {
+      <div class="fb-thanks mono" role="status">✓ feedback sent — thank you</div>
+    }
   }
 </article>

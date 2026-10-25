@@ -10,11 +10,25 @@ import {
   viewChild,
 } from '@angular/core';
 import { LucideArrowUp, LucideSquare } from '@lucide/angular';
+import type { SymbolMatch } from '../core/api/types';
 import type { CommandSpec } from '../core/commands/commands';
 import { matchCommands } from '../core/commands/commands';
+import { MarketService } from '../core/gateway/market.service';
 import { PreferencesStore } from '../core/state/preferences.store';
 import { LayoutService } from '../shell/layout.service';
 import { ShellStateService } from '../shell/shell-state.service';
+
+const SYMBOL_TOKEN = /(?:^|\s)\$([A-Za-z][A-Za-z0-9.-]{0,9})$/;
+const COMMAND_SYMBOL =
+  /^\/(?:analyze|compare|chart|fundamentals|forecast|watch|unwatch)\s+(?:\S+\s+)*([A-Za-z][A-Za-z0-9.-]{0,9})$/i;
+const SEARCH_DEBOUNCE_MS = 160;
+
+interface SymbolToken {
+  query: string;
+  start: number;
+  end: number;
+  dollar: boolean;
+}
 
 const CHIPS = [
   '/analyze NVDA',
@@ -34,6 +48,7 @@ const CHIPS = [
 })
 export class PromptInput {
   private readonly prefs = inject(PreferencesStore);
+  private readonly market = inject(MarketService);
   private readonly shell = inject(ShellStateService);
   protected readonly layout = inject(LayoutService);
 
@@ -52,9 +67,49 @@ export class PromptInput {
   protected readonly suggestions = computed<CommandSpec[]>(() =>
     this.dismissed() ? [] : matchCommands(this.value()),
   );
+  private readonly caret = signal(0);
+  protected readonly symbolResults = signal<SymbolMatch[]>([]);
+  protected readonly symbolSelected = signal(0);
+  private readonly token = computed<SymbolToken | null>(() => {
+    if (this.dismissed()) return null;
+    const value = this.value();
+    const caret = this.caret();
+    const after = value.slice(caret);
+    if (after && !/^\s/.test(after)) return null;
+    const before = value.slice(0, caret);
+    const dollar = SYMBOL_TOKEN.exec(before);
+    if (dollar?.[1]) {
+      return { query: dollar[1], start: caret - dollar[1].length - 1, end: caret, dollar: true };
+    }
+    if (before.includes('\n')) return null;
+    const command = COMMAND_SYMBOL.exec(before);
+    if (command?.[1]) {
+      return { query: command[1], start: caret - command[1].length, end: caret, dollar: false };
+    }
+    return null;
+  });
+  protected readonly symbolSuggestions = computed(() => (this.token() ? this.symbolResults() : []));
   protected readonly canSend = computed(() => this.value().trim().length > 0 && !this.busy());
 
   constructor() {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let seq = 0;
+    effect((onCleanup) => {
+      const token = this.token();
+      const id = ++seq;
+      if (!token) {
+        this.symbolResults.set([]);
+        return;
+      }
+      timer = setTimeout(async () => {
+        const results = await this.market.search(token.query, 6);
+        if (id !== seq) return;
+        const exact = results.length === 1 && results[0]?.symbol === token.query.toUpperCase();
+        this.symbolResults.set(exact ? [] : results);
+        this.symbolSelected.set(0);
+      }, SEARCH_DEBOUNCE_MS);
+      onCleanup(() => clearTimeout(timer));
+    });
     effect(() => {
       const draft = this.shell.draft();
       if (!draft) return;
@@ -69,19 +124,38 @@ export class PromptInput {
     el.setSelectionRange(el.value.length, el.value.length);
   }
 
+  protected trackCaret(): void {
+    this.caret.set(this.textarea().nativeElement.selectionStart ?? this.value().length);
+  }
+
   protected onInput(value: string): void {
     this.value.set(value);
+    this.trackCaret();
     this.selected.set(0);
     this.dismissed.set(false);
     this.historyIndex = -1;
     this.autosize();
   }
 
-  private setValue(value: string): void {
+  private setValue(value: string, caret = value.length): void {
     this.value.set(value);
     const el = this.textarea().nativeElement;
     el.value = value;
+    el.setSelectionRange(caret, caret);
+    this.caret.set(caret);
     this.autosize();
+  }
+
+  protected pickSymbol(match: SymbolMatch): void {
+    const token = this.token();
+    if (!token) return;
+    const value = this.value();
+    const insert = `${token.dollar ? '$' : ''}${match.symbol} `;
+    const rest = value.slice(token.end).replace(/^\s+/, '');
+    const next = value.slice(0, token.start) + insert + rest;
+    this.symbolResults.set([]);
+    this.setValue(next, token.start + insert.length);
+    this.textarea().nativeElement.focus();
   }
 
   private autosize(): void {
@@ -94,6 +168,29 @@ export class PromptInput {
     if (event.isComposing) return;
     const suggestions = this.suggestions();
     const el = this.textarea().nativeElement;
+    const symbols = this.symbolSuggestions();
+
+    if (symbols.length) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        this.symbolSelected.update((i) => (i + delta + symbols.length) % symbols.length);
+        return;
+      }
+      if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+        const pick = symbols[this.symbolSelected()];
+        if (pick) {
+          event.preventDefault();
+          this.pickSymbol(pick);
+          return;
+        }
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.symbolResults.set([]);
+        return;
+      }
+    }
 
     if (suggestions.length) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {

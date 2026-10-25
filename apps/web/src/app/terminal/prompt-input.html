@@ -20,6 +20,27 @@
     </ul>
   }
 
+  @if (symbolSuggestions().length) {
+    <ul class="suggest" id="sym-suggest" role="listbox" aria-label="Symbols">
+      @for (m of symbolSuggestions(); track m.symbol; let i = $index) {
+        <li
+          [id]="'sym-' + m.symbol"
+          role="option"
+          class="opt"
+          [class.active]="i === symbolSelected()"
+          [attr.aria-selected]="i === symbolSelected()"
+          tabindex="-1"
+          (mousedown)="$event.preventDefault()"
+          (click)="pickSymbol(m)"
+          (keydown.enter)="pickSymbol(m)"
+        >
+          <span class="usage mono">{{ m.symbol }}</span>
+          <span class="desc">{{ m.name }} · {{ m.exchange }}</span>
+        </li>
+      }
+    </ul>
+  }
+
   <div class="box" [class.busy]="busy()">
     <span class="glyph mono" aria-hidden="true">❯</span>
     <label class="sr-only" for="prompt-input">Ask Candela</label>
@@ -35,10 +56,16 @@
       maxlength="8000"
       role="combobox"
       aria-autocomplete="list"
-      [attr.aria-expanded]="suggestions().length > 0"
-      [attr.aria-controls]="suggestions().length ? 'cmd-suggest' : null"
+      [attr.aria-expanded]="suggestions().length > 0 || symbolSuggestions().length > 0"
+      [attr.aria-controls]="
+        symbolSuggestions().length ? 'sym-suggest' : suggestions().length ? 'cmd-suggest' : null
+      "
       [attr.aria-activedescendant]="
-        suggestions().length ? 'cmd-' + suggestions()[selected()]?.name : null
+        symbolSuggestions().length
+          ? 'sym-' + symbolSuggestions()[symbolSelected()]?.symbol
+          : suggestions().length
+            ? 'cmd-' + suggestions()[selected()]?.name
+            : null
       "
       [placeholder]="
         busy()
@@ -49,6 +76,8 @@
       "
       (input)="onInput($any($event.target).value)"
       (keydown)="onKeydown($event)"
+      (keyup)="trackCaret()"
+      (click)="trackCaret()"
     ></textarea>
     @if (busy()) {
       <button

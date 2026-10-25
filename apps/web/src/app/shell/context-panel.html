@@ -28,8 +28,15 @@
           <div class="px-row">
             <span class="px mono">{{ fmtPrice(q.close) }}</span>
             <span class="chg mono" [class]="toneOf(q.change)">
-              {{ q.change > 0 ? '+' : '' }}{{ fmtPrice(q.change) }} · {{ fmtPct(q.changePct) }}
+              {{ arrowOf(q.change) }} {{ q.change > 0 ? '+' : '' }}{{ fmtPrice(q.change) }} ·
+              {{ fmtPct(q.changePct) }}
             </span>
+          </div>
+          <div class="mini-chart" role="img" [attr.aria-label]="q.symbol + ' closes over 3 months'">
+            @if (closes().length > 1) {
+              <cd-canvas-spark [values]="closes()" [fill]="true" />
+            }
+            <span class="mini-label mono">3M</span>
           </div>
           <dl class="stats">
             <div>
@@ -52,10 +59,6 @@
               <dt>Avg vol 30d</dt>
               <dd class="mono">{{ fmtCompact(q.avgVolume30d) }}</dd>
             </div>
-            <div>
-              <dt>Source</dt>
-              <dd class="mono">{{ q.source }}{{ q.delayed ? ' · delayed' : '' }}</dd>
-            </div>
           </dl>
           <div class="range" aria-label="52-week range">
             <div class="range-labels mono">
@@ -67,7 +70,63 @@
               <div class="marker" [style.left.%]="rangePct()"></div>
             </div>
           </div>
-          <div class="asof mono">as of {{ q.asOf }}</div>
+          @if (keyIndicators(); as k) {
+            <h3 class="sub label">Indicators</h3>
+            <dl class="stats">
+              <div>
+                <dt>RSI 14</dt>
+                <dd class="mono">{{ fmtNumber(k.rsi, 1) }} · {{ k.rsiNote }}</dd>
+              </div>
+              <div>
+                <dt>MACD hist</dt>
+                <dd class="mono" [class]="toneOf(k.macdHist)">
+                  {{ arrowOf(k.macdHist) }} {{ fmtNumber(k.macdHist) }}
+                </dd>
+              </div>
+              <div>
+                <dt>vs SMA 50</dt>
+                <dd class="mono" [class]="toneOf(k.vs50)">
+                  {{ arrowOf(k.vs50) }} {{ fmtPct(k.vs50) }}
+                </dd>
+              </div>
+              <div>
+                <dt>vs SMA 200</dt>
+                <dd class="mono" [class]="toneOf(k.vs200)">
+                  {{ arrowOf(k.vs200) }} {{ fmtPct(k.vs200) }}
+                </dd>
+              </div>
+            </dl>
+            @if (k.signals.length) {
+              <ul class="signals" aria-label="Signals">
+                @for (s of k.signals; track s.id) {
+                  <li class="signal" [class]="s.tone" [title]="s.detail">
+                    {{ s.tone === 'bullish' ? '▲' : s.tone === 'bearish' ? '▼' : '◆' }}
+                    {{ s.label }}
+                  </li>
+                }
+              </ul>
+            }
+          }
+          @if (fan(); as f) {
+            <h3 class="sub label">Forecast · {{ f.source }}</h3>
+            <div class="mini-fan" aria-label="Forecast P10 to P90 bands">
+              @for (r of f.rows; track r.months) {
+                <div class="fan-row">
+                  <span class="mono fan-h">{{ r.months }}M</span>
+                  <div class="fan-track" aria-hidden="true">
+                    <div class="fan-band" [style.left.%]="r.left" [style.width.%]="r.width"></div>
+                    <div class="fan-base" [style.left.%]="f.base"></div>
+                    <div class="fan-mid" [style.left.%]="r.mid"></div>
+                  </div>
+                  <span class="mono fan-v" [class]="toneOf(r.delta)">{{ fmtPrice(r.p50) }}</span>
+                  <span class="sr-only">median {{ fmtPct(r.delta) }} versus base</span>
+                </div>
+              }
+            </div>
+          }
+          <div class="asof mono">
+            {{ q.source }}{{ q.delayed ? ' · delayed' : '' }} · as of {{ q.asOf }}
+          </div>
         </div>
       } @else if (quote.isLoading()) {
         <div class="muted mono">loading…</div>

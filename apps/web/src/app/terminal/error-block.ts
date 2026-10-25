@@ -12,7 +12,8 @@ import type { AssistantTurn } from '../core/state/conversation.model';
 
 const HINTS: Record<string, string> = {
   rate_limited: 'Too many requests in a short time.',
-  overloaded: 'The model is busy; the queue is full.',
+  overloaded:
+    'Candela runs on a single GPU and serves one conversation at a time; the queue is full right now.',
   upstream_unavailable: 'The model server is unreachable.',
   upstream_timeout: 'The model took too long to respond.',
   data_unavailable: 'A market data provider failed.',
@@ -45,6 +46,16 @@ const HINTS: Record<string, string> = {
               Retry
             }
           </button>
+          @if (countdown()) {
+            <label class="auto">
+              <input
+                type="checkbox"
+                [checked]="autoRetry()"
+                (change)="autoRetry.set($any($event.target).checked)"
+              />
+              retry automatically
+            </label>
+          }
         </div>
       </div>
     }
@@ -70,7 +81,21 @@ const HINTS: Record<string, string> = {
       color: var(--fg-1);
     }
     .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
       margin-top: 8px;
+    }
+    .auto {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--fg-1);
+      font-size: 12px;
+    }
+    .auto input {
+      accent-color: var(--accent);
     }
     .btn {
       height: 28px;
@@ -87,11 +112,22 @@ const HINTS: Record<string, string> = {
 export class ErrorBlock {
   readonly turn = input.required<AssistantTurn>();
   readonly disabled = input(false);
+  readonly retryable = input(true);
   readonly retry = output();
   private readonly now = signal(Date.now());
+  protected readonly autoRetry = signal(true);
+  private autoFired = false;
 
   protected readonly error = computed(() => this.turn().error ?? null);
   protected readonly hint = computed(() => HINTS[this.error()?.code ?? ''] ?? '');
+  protected readonly countdown = computed(
+    () => this.retryable() && !!this.error()?.retryAfterMs && this.remainingAtStart() > 0,
+  );
+  private readonly remainingAtStart = computed(() => {
+    const e = this.error();
+    if (!e?.retryAfterMs) return 0;
+    return new Date(e.at).getTime() + e.retryAfterMs - Date.now();
+  });
   protected readonly remaining = computed(() => {
     const e = this.error();
     if (!e?.retryAfterMs) return 0;
@@ -106,7 +142,12 @@ export class ErrorBlock {
       if (this.error()?.retryAfterMs) {
         timer = setInterval(() => {
           this.now.set(Date.now());
-          if (this.remaining() === 0) clearInterval(timer);
+          if (this.remaining() > 0) return;
+          clearInterval(timer);
+          if (this.countdown() && this.autoRetry() && !this.disabled() && !this.autoFired) {
+            this.autoFired = true;
+            this.retry.emit();
+          }
         }, 250);
       }
     });

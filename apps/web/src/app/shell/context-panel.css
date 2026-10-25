@@ -181,3 +181,106 @@
   line-height: 1.5;
   color: var(--fg-2);
 }
+
+.mini-chart {
+  position: relative;
+  height: 64px;
+  margin: 10px 0 4px;
+}
+
+.mini-chart cd-canvas-spark {
+  height: 100%;
+}
+
+.mini-label {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 10px;
+  color: var(--fg-2);
+}
+
+.sub {
+  margin: 14px 0 6px;
+}
+
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal {
+  padding: 1px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--fg-1);
+}
+
+.signal.bullish {
+  border-color: rgb(46 189 133 / 0.4);
+  color: var(--up);
+}
+
+.signal.bearish {
+  border-color: rgb(246 70 93 / 0.4);
+  color: var(--down);
+}
+
+.mini-fan {
+  display: grid;
+  gap: 6px;
+}
+
+.fan-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 64px;
+  align-items: center;
+  gap: 8px;
+}
+
+.fan-h {
+  font-size: 10.5px;
+  color: var(--fg-2);
+}
+
+.fan-v {
+  font-size: 11px;
+  text-align: right;
+}
+
+.fan-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-2);
+}
+
+.fan-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: rgb(245 165 36 / 0.35);
+}
+
+.fan-mid {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  background: var(--accent);
+}
+
+.fan-base {
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 12px;
+  background: var(--fg-2);
+}
