@@ -493,7 +493,7 @@ class Engine:
             quantize_kv(cache, self.settings.kv_start, kv_bits)
             logprobs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
             nxt = sampler(logprobs).reshape(-1)
-            graph = tele.graph(states, logprobs) if tele and states else None
+            graph = tele.graph(states, logprobs, bias) if tele and states else None
             mx.async_eval(nxt, *(graph.values() if graph else ()))
             return nxt, graph
 

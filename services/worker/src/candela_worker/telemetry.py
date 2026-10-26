@@ -84,7 +84,9 @@ class Telemetry:
         states, self.recorder.states = self.recorder.states, {}
         return states
 
-    def graph(self, states: dict[int, mx.array], logprobs: mx.array) -> dict[str, mx.array]:
+    def graph(
+        self, states: dict[int, mx.array], logprobs: mx.array, bias: mx.array | None
+    ) -> dict[str, mx.array]:
         """Lazy arrays for one generated position; evaluated together with the sampled token."""
         idx = sorted(states)
         hs = mx.stack([states[i] for i in idx]).astype(mx.float32)
@@ -97,6 +99,8 @@ class Telemetry:
         logits = self._head(self._norm(lens_h)).astype(mx.float32)
         if self._softcap:
             logits = mx.tanh(logits / self._softcap) * self._softcap
+        if bias is not None:
+            logits = logits + bias
         lens_lp = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
         lens_ids = _top_ids(lens_lp, LENS_TOP)
         lens_p = mx.exp(mx.take_along_axis(lens_lp, lens_ids, axis=-1))
