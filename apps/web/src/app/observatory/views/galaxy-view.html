@@ -1,0 +1,108 @@
+@if (galaxy(); as g) {
+  @if (ui.dataView()) {
+    <section class="data" aria-labelledby="galaxy-data-title">
+      <h2 id="galaxy-data-title">Embedding Galaxy · {{ g.modelId }}</h2>
+      <p class="note">
+        {{ g.points.length }} companies placed by {{ g.method.toUpperCase() }} of
+        {{
+          g.source === 'hidden_state_mean'
+            ? 'the mean last-layer hidden state'
+            : 'an embedding model'
+        }}, generated {{ shortDate(g.generatedAt) }}.
+      </p>
+      <cd-data-table caption="Galaxy points" [columns]="columns" [rows]="rows()" />
+    </section>
+  } @else {
+    <div class="stage">
+      <cd-scene-canvas [module]="module()" (hovered)="onHover($event)" (picked)="onPick($event)" />
+
+      <section class="overlay tl" aria-label="Galaxy">
+        <p class="kicker mono">embedding galaxy</p>
+        <h2>{{ g.points.length }} companies · {{ g.method.toUpperCase() }}</h2>
+        <p class="sub">
+          {{
+            g.source === 'hidden_state_mean' ? 'mean last-layer hidden state' : 'embedding model'
+          }}
+          of {{ g.modelId }} · size = market cap
+        </p>
+        <form class="find" (submit)="$event.preventDefault(); find()">
+          <input
+            class="mono"
+            type="search"
+            placeholder="symbol or company"
+            aria-label="Find a company"
+            [value]="query()"
+            (input)="query.set($any($event.target).value)"
+          />
+          <button type="submit" class="mini">find</button>
+        </form>
+      </section>
+
+      <section class="overlay tr sectors hide-mobile" aria-label="Sectors">
+        <ul>
+          @for (s of sectors(); track s.id) {
+            <li>
+              <button
+                type="button"
+                class="sector"
+                [attr.aria-pressed]="!hidden().has(s.id)"
+                (click)="toggleSector(s.id)"
+              >
+                <span class="swatch" [style.background]="s.color"></span>
+                <span class="sname">{{ s.name }}</span>
+                <span class="count mono">{{ s.count }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as p) {
+        <section class="overlay bl" aria-label="Selected company" aria-live="polite">
+          <h3>{{ p.symbol }} · {{ p.name }}</h3>
+          <p class="sub">
+            {{ sectorName().get(p.sector) ?? p.sector }}
+            @if (p.marketCapB) {
+              · ${{ p.marketCapB.toFixed(1) }}B
+            }
+          </p>
+          <div class="actions">
+            <button type="button" class="mini" (click)="focusInTerminal(p)">pin in context</button>
+            <button type="button" class="mini primary" (click)="analyze(p)">
+              /analyze {{ p.symbol }}
+            </button>
+            <button type="button" class="mini" (click)="selected.set(null)">clear</button>
+          </div>
+          @if (notice()) {
+            <p class="sub notice">{{ notice() }}</p>
+          }
+        </section>
+      } @else if (notice()) {
+        <p class="overlay bl sub" role="status">{{ notice() }}</p>
+      }
+
+      @if (hover(); as h) {
+        <div class="tooltip" [style.left.px]="h.x" [style.top.px]="h.y" role="tooltip">
+          <div>{{ h.point.symbol }} · {{ h.point.name }}</div>
+          <div>
+            {{ sectorName().get(h.point.sector) ?? h.point.sector }}
+            @if (h.point.marketCapB) {
+              · ${{ h.point.marketCapB.toFixed(1) }}B
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+} @else if (data.galaxy.isLoading() || data.manifest.isLoading()) {
+  <div class="awaiting" role="status"><p>Loading the galaxy…</p></div>
+} @else {
+  <div class="awaiting" role="status">
+    <h2>Awaiting the first galaxy export</h2>
+    <p>
+      The galaxy places S&amp;P 500 companies by how Candela Pro represents them. It appears once
+      the lab exports <code>galaxy.json</code> with
+      <code>lab observatory galaxy &lt;model&gt;</code>.
+    </p>
+  </div>
+}

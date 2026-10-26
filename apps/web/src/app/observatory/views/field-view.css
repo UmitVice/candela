@@ -1,0 +1,81 @@
+.ramp {
+  width: 180px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.ramp-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  color: var(--fg-2);
+  font-size: 10.5px;
+}
+
+.ramp-note {
+  margin: 6px 0 0;
+  color: var(--fg-2);
+  font-size: 11px;
+}
+
+.timeline-wrap {
+  left: 50%;
+  bottom: 12px;
+  width: min(560px, calc(100% - 24px));
+  max-width: none;
+  transform: translateX(-50%);
+}
+
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline.inline {
+  margin-bottom: 16px;
+  max-width: 520px;
+}
+
+.timeline input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.play {
+  height: 26px;
+  min-width: 56px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.step {
+  min-width: 72px;
+  color: var(--fg-0);
+  text-align: right;
+}
+
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 74px 0 66px;
+  color: var(--fg-2);
+  font-size: 10px;
+}
+
+.ticks .on {
+  color: var(--accent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

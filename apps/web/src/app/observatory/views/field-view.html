@@ -1,0 +1,108 @@
+@if (deltas(); as d) {
+  @if (ui.dataView()) {
+    <section class="data" aria-labelledby="field-data-title">
+      <h2 id="field-data-title">Fine-tune Field · {{ d.modelId }}</h2>
+      <p class="note">
+        Frobenius norm of each LoRA update (scale × B × A) per layer and projection at checkpoint
+        step {{ checkpoint()?.step }}. Layers without an adapter are frozen and read 0.
+      </p>
+      <div class="timeline inline">
+        <label class="mono" for="field-step-data">checkpoint</label>
+        <input
+          id="field-step-data"
+          type="range"
+          min="0"
+          [max]="checkpoints().length - 1"
+          step="1"
+          [value]="index()"
+          [attr.aria-valuetext]="'step ' + checkpoint()?.step"
+          (input)="scrub($any($event.target).value)"
+        />
+        <span class="mono step">step {{ checkpoint()?.step }}</span>
+      </div>
+      <cd-data-table
+        [caption]="'LoRA delta norms · step ' + checkpoint()?.step"
+        [columns]="tableColumns()"
+        [rows]="tableRows()"
+      />
+    </section>
+  } @else {
+    <div class="stage">
+      <cd-scene-canvas [module]="module()" [autoRotate]="false" (hovered)="onHover($event)" />
+
+      <section class="overlay tl" aria-label="Checkpoint summary">
+        <p class="kicker mono">fine-tune field</p>
+        <h2>{{ d.modelId }}</h2>
+        <dl>
+          <dt>checkpoint</dt>
+          <dd>step {{ checkpoint()?.step }}</dd>
+          <dt>max norm</dt>
+          <dd>{{ checkpoint()?.maxNorm?.toFixed(3) }}</dd>
+          <dt>adapted cells</dt>
+          <dd>{{ summary()?.adapted }} / {{ summary()?.total }}</dd>
+          @if (summary()?.top; as top) {
+            <dt>largest</dt>
+            <dd>{{ top }}</dd>
+          }
+        </dl>
+      </section>
+
+      <section class="overlay tr hide-mobile" aria-label="Colour scale">
+        <div class="ramp" [style.background]="gradient"></div>
+        <div class="ramp-labels mono"><span>small update</span><span>large update</span></div>
+        <p class="ramp-note">x = projection · z = layer · height = log ‖scale·B·A‖_F</p>
+      </section>
+
+      <div class="overlay timeline-wrap">
+        <div class="timeline">
+          <button
+            type="button"
+            class="play mono"
+            [attr.aria-pressed]="playing()"
+            (click)="play()"
+            [attr.aria-label]="
+              playing() ? 'Pause checkpoint animation' : 'Play checkpoint animation'
+            "
+          >
+            {{ playing() ? 'pause' : 'play' }}
+          </button>
+          <label class="sr-only" for="field-step">Checkpoint</label>
+          <input
+            id="field-step"
+            type="range"
+            min="0"
+            [max]="checkpoints().length - 1"
+            step="1"
+            [value]="index()"
+            [attr.aria-valuetext]="'step ' + checkpoint()?.step"
+            (input)="scrub($any($event.target).value)"
+          />
+          <span class="mono step">step {{ checkpoint()?.step }}</span>
+        </div>
+        <div class="ticks mono" aria-hidden="true">
+          @for (c of checkpoints(); track c.step; let i = $index) {
+            <span [class.on]="i === index()">{{ c.step }}</span>
+          }
+        </div>
+      </div>
+
+      @if (hover(); as h) {
+        <div class="tooltip" [style.left.px]="h.x" [style.top.px]="h.y" role="tooltip">
+          @for (line of h.text; track $index) {
+            <div>{{ line }}</div>
+          }
+        </div>
+      }
+    </div>
+  }
+} @else if (data.loraDeltas.isLoading() || data.manifest.isLoading()) {
+  <div class="awaiting" role="status"><p>Loading LoRA deltas…</p></div>
+} @else {
+  <div class="awaiting" role="status">
+    <h2>Awaiting the first training run</h2>
+    <p>
+      No <code>lora-deltas.json</code> is published for this model yet. The ML pipeline writes it
+      with <code>make ml-observatory</code>.
+    </p>
+  </div>
+}

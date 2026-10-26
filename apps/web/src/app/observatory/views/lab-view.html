@@ -1,0 +1,133 @@
+@if (run(); as r) {
+  <div class="hud">
+    <section class="card summary" aria-labelledby="lab-model">
+      <p class="kicker mono">model card</p>
+      <h2 id="lab-model">{{ model()?.displayName }} {{ model()?.version }}</h2>
+      <p class="sub mono">{{ model()?.baseModel }} · {{ model()?.status }}</p>
+      <dl>
+        <dt>run</dt>
+        <dd>{{ r.runId }} · {{ r.status }}</dd>
+        <dt>window</dt>
+        <dd>{{ shortDate(r.startedAt) }} → {{ shortDate(r.finishedAt) }} UTC · {{ duration() }}</dd>
+        <dt>hardware</dt>
+        <dd>{{ r.hardware.device }} · guard {{ r.hardware.memoryLimitGb }} GB</dd>
+        <dt>data</dt>
+        <dd>
+          {{ r.config.datasetVersion }} · {{ r.config.trainExamples.toLocaleString('en-US') }} train
+          · {{ r.config.validExamples }} valid
+        </dd>
+        <dt>schedule</dt>
+        <dd>
+          {{ r.config.iters }} iters · batch {{ r.config.batchSize }}×{{
+            r.config.gradAccumulation
+          }}
+          · lr {{ r.config.learningRate }} · {{ r.config.schedule }}
+        </dd>
+        @if (arch(); as a) {
+          <dt>adapter</dt>
+          <dd>
+            LoRA r{{ a.lora.rank }} · scale {{ a.lora.scale }} · {{ a.lora.modules.length }} modules
+            · layers {{ a.lora.layerIndices[0] }}–{{ a.lora.layerIndices.at(-1) }} ·
+            {{ compact(a.lora.trainableParameters) }} trainable
+          </dd>
+        }
+        @for (s of lossSuites(); track s.id) {
+          <dt>{{ s.name }}</dt>
+          <dd [class.good]="better(s)" [class.bad]="!better(s)">
+            {{ s.base.toFixed(3) }} → {{ s.tuned.toFixed(3) }} {{ better(s) ? '▲' : '▼' }}
+          </dd>
+        }
+        <dt>pauses</dt>
+        <dd>{{ r.pauses.length }} resource-guard pause{{ r.pauses.length === 1 ? '' : 's' }}</dd>
+      </dl>
+    </section>
+
+    @if (ui.dataView()) {
+      <section class="card wide">
+        <cd-data-table caption="Train steps" [columns]="trainColumns" [rows]="trainRows()" />
+        <cd-data-table caption="Validation" [columns]="validColumns" [rows]="validRows()" />
+        <cd-data-table
+          caption="Resource-guard pauses"
+          [columns]="pauseColumns"
+          [rows]="pauseRows()"
+        />
+        <cd-data-table
+          caption="Evaluation · base vs tuned"
+          [columns]="evalColumns"
+          [rows]="evalRows()"
+        />
+      </section>
+    } @else {
+      <section class="card" aria-labelledby="lab-loss">
+        <h3 id="lab-loss">Loss</h3>
+        <cd-obs-chart
+          [option]="lossOption()"
+          [label]="
+            'Train and validation loss over ' +
+            r.config.iters +
+            ' steps; dashed marks are resource-guard pauses'
+          "
+        />
+      </section>
+      <section class="card" aria-labelledby="lab-lr">
+        <h3 id="lab-lr">Learning rate</h3>
+        <cd-obs-chart
+          [option]="lrOption()"
+          [label]="'Learning rate schedule: ' + r.config.schedule"
+        />
+      </section>
+      <section class="card" aria-labelledby="lab-sys">
+        <h3 id="lab-sys">Throughput and peak memory</h3>
+        <cd-obs-chart
+          [option]="systemOption()"
+          label="Tokens per second and peak memory per step with the memory-guard limit and pause marks"
+        />
+      </section>
+      @if (evalOption(); as opt) {
+        <section class="card wide" aria-labelledby="lab-eval">
+          <h3 id="lab-eval">Evaluation · base vs tuned</h3>
+          <cd-obs-chart
+            [option]="opt"
+            [style.--chart-h.px]="40 + suites().length * 34"
+            label="Base and tuned scores per evaluation suite; amber bars improved, red bars regressed"
+          />
+        </section>
+      } @else {
+        <section class="card wide">
+          <h3>Evaluation</h3>
+          <p class="sub">Awaiting the first evaluation report (<code>eval.json</code>).</p>
+        </section>
+      }
+    }
+
+    @if (report()?.samples?.length) {
+      <section class="card wide" aria-labelledby="lab-samples">
+        <h3 id="lab-samples">Side-by-side samples</h3>
+        @for (s of report()?.samples; track $index) {
+          <details class="sample">
+            <summary class="mono">
+              {{ s.suite }} · {{ s.prompt.slice(0, 110) }}{{ s.prompt.length > 110 ? '…' : '' }}
+            </summary>
+            <div class="pair">
+              <div>
+                <p class="kicker mono">base</p>
+                <p class="text">{{ s.base }}</p>
+              </div>
+              <div>
+                <p class="kicker mono">tuned</p>
+                <p class="text">{{ s.tuned }}</p>
+              </div>
+            </div>
+          </details>
+        }
+      </section>
+    }
+  </div>
+} @else if (data.training.isLoading() || data.manifest.isLoading()) {
+  <div class="awaiting" role="status"><p>Loading the training run…</p></div>
+} @else {
+  <div class="awaiting" role="status">
+    <h2>Awaiting the first training run</h2>
+    <p>No <code>training.json</code> is published for this model yet.</p>
+  </div>
+}

@@ -1,0 +1,239 @@
+@if (arch(); as a) {
+  <div class="hud">
+    <section class="card wide" aria-labelledby="spark-family">
+      <p class="kicker mono">candela spark · from-scratch, QAT-native</p>
+      <h2 id="spark-family">Family</h2>
+      <ol class="family">
+        @for (p of family(); track p.id) {
+          <li class="node" [class.active]="p.active" [class.planned]="p.status === 'planned'">
+            <span
+              class="orb"
+              aria-hidden="true"
+              [style.width.px]="p.size"
+              [style.height.px]="p.size"
+            ></span>
+            <span class="nid mono">{{ p.id }}</span>
+            <span class="nmeta mono"
+              >{{ compact(p.parameters) }} · {{ p.layers }}L × {{ p.hiddenSize }}</span
+            >
+            <span class="nstatus mono">{{ p.status }}</span>
+          </li>
+        }
+      </ol>
+      <p class="sub">
+        {{ a.layout }} · {{ a.quantization.bits }}-bit {{ a.quantization.mode }} QAT from step
+        {{ a.quantization.qatFromStep }} ({{ a.quantization.scope }}) · {{ a.tokenizer.type }}
+        {{ a.tokenizer.vocabSize.toLocaleString('en-US') }}
+        @if (model()?.huggingFace; as hf) {
+          ·
+          <a class="hf" [href]="'https://huggingface.co/' + hf" target="_blank" rel="noopener">{{
+            hf
+          }}</a>
+        }
+      </p>
+    </section>
+
+    <section class="card wide" aria-labelledby="spark-progress">
+      <h3 id="spark-progress">
+        Training progress
+        <span class="src mono" [class.live]="progress().live">{{ progress().source }}</span>
+      </h3>
+      <dl class="stats-grid">
+        <div>
+          <dt>state</dt>
+          <dd>{{ progress().state }}</dd>
+        </div>
+        <div>
+          <dt>step</dt>
+          <dd>{{ progress().step ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>tokens seen</dt>
+          <dd>{{ progress().tokens ? compact(progress().tokens!) : '—' }}</dd>
+        </div>
+        <div>
+          <dt>train loss</dt>
+          <dd>{{ progress().loss?.toFixed(3) ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>val bf16 / int4</dt>
+          <dd>
+            {{ progress().bf16?.toFixed(3) ?? '—' }} / {{ progress().int4?.toFixed(3) ?? '—' }}
+          </dd>
+        </div>
+        <div>
+          <dt>int4 gap</dt>
+          <dd>
+            {{
+              progress().gap !== undefined && progress().gap !== null
+                ? pct(progress().gap!, 2)
+                : '—'
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>throughput</dt>
+          <dd>{{ progress().tps ? compact(progress().tps!) + ' tok/s' : '—' }}</dd>
+        </div>
+        <div>
+          <dt>pauses</dt>
+          <dd>{{ progress().pauses }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    @if (ui.dataView()) {
+      <section class="card wide">
+        <cd-data-table
+          caption="Validation · bf16 vs int4"
+          [columns]="validColumns"
+          [rows]="validRows()"
+        />
+        <cd-data-table caption="Pauses" [columns]="pauseColumns" [rows]="pauseRows()" />
+        <cd-data-table
+          [caption]="'Zero-shot · ' + (milestones().at(-1)?.id ?? 'no milestone')"
+          [columns]="zeroShotColumns"
+          [rows]="zeroShotRows()"
+        />
+      </section>
+    } @else {
+      <section class="card" aria-labelledby="spark-loss">
+        <h3 id="spark-loss">Train loss vs tokens</h3>
+        <cd-obs-chart
+          [option]="lossOption()"
+          label="Training loss over tokens seen for the main run and decay branches"
+        />
+      </section>
+      <section class="card" aria-labelledby="spark-gap">
+        <h3 id="spark-gap">QAT gap · int4 vs bf16 validation</h3>
+        <cd-obs-chart
+          [option]="gapOption()"
+          label="Validation loss in bf16 and in int4 with the relative gap; a small gap shows quantization-aware training working"
+        />
+      </section>
+      <section class="card" aria-labelledby="spark-tps">
+        <h3 id="spark-tps">Throughput · pauses</h3>
+        <cd-obs-chart
+          [option]="throughputOption()"
+          label="Tokens per second per step with lease and resource pauses"
+        />
+      </section>
+      <section class="card" aria-labelledby="spark-scaling">
+        <h3 id="spark-scaling">Scaling · loss vs compute</h3>
+        <cd-obs-chart
+          [option]="scalingOption()"
+          label="Validation loss against training compute, 6 times non-embedding parameters times tokens"
+        />
+        <p class="sub">
+          C ≈ 6·N·D with N = {{ compact(a.parameters.non_embedding) }} non-embedding parameters.
+          Larger family members join this chart as they train.
+        </p>
+      </section>
+      <section class="card" aria-labelledby="spark-zs">
+        <h3 id="spark-zs">Zero-shot · {{ milestones().at(-1)?.id ?? 'no milestone yet' }}</h3>
+        <ul class="zs">
+          @for (z of milestones().at(-1)?.zeroShot ?? []; track z.id) {
+            <li>
+              <span class="zid mono">{{ z.id }}</span>
+              <span
+                class="bar"
+                role="img"
+                [attr.aria-label]="z.id + ' ' + pct(z.value) + ', chance ' + pct(z.chance)"
+              >
+                <span class="fill" [style.width.%]="z.value * 100"></span>
+                <span class="chance" [style.left.%]="z.chance * 100"></span>
+              </span>
+              <span class="zv mono">{{ pct(z.value) }}</span>
+            </li>
+          }
+        </ul>
+        <p class="sub">Tick = chance level. n = 16–1000 per benchmark.</p>
+      </section>
+    }
+
+    @if (attention(); as att) {
+      <section class="card wide" aria-labelledby="spark-att">
+        <h3 id="spark-att">Attention explorer · {{ att.milestone }}</h3>
+        <div class="att-controls">
+          <label class="mono">
+            sentence
+            <select [value]="sentence()" (change)="setSentence($any($event.target).value)">
+              @for (s of att.sentences; track $index) {
+                <option [value]="$index">{{ s.text }}</option>
+              }
+            </select>
+          </label>
+          <label class="mono">
+            layer
+            <select [value]="layer()" (change)="layer.set(+$any($event.target).value)">
+              @for (l of layers(); track l) {
+                <option [value]="l">L{{ l }} · {{ att.layerTypes[l] }}</option>
+              }
+            </select>
+          </label>
+          <label class="mono">
+            head
+            <select [value]="head()" (change)="head.set(+$any($event.target).value)">
+              @for (h of heads(); track h) {
+                <option [value]="h">{{ h }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <div class="att-grid">
+          @if (attentionModule()) {
+            <div class="att-stage">
+              <cd-scene-canvas
+                [module]="attentionModule()"
+                [autoRotate]="false"
+                (hovered)="onHeadHover($event)"
+                (picked)="onHeadPick($event)"
+              />
+              <p class="att-hint mono">
+                {{ att.layers }} layers × {{ att.heads }} heads · click a tile
+              </p>
+            </div>
+          }
+          <cd-attention-map
+            [tokens]="tokens()"
+            [values]="drill()"
+            [caption]="
+              'Attention of layer ' +
+              layer() +
+              ' head ' +
+              head() +
+              ' for: ' +
+              (att.sentences[sentence()]?.text ?? '')
+            "
+          />
+        </div>
+        @if (hoverHead(); as h) {
+          <div class="tooltip" [style.left.px]="h.x" [style.top.px]="h.y" role="tooltip">
+            {{ h.text }}
+          </div>
+        }
+      </section>
+    }
+
+    @if (milestones().at(-1)?.samples?.length) {
+      <section class="card wide" aria-labelledby="spark-samples">
+        <h3 id="spark-samples">Samples · {{ milestones().at(-1)?.id }}</h3>
+        @for (s of milestones().at(-1)?.samples; track $index) {
+          <details class="sample">
+            <summary class="mono">{{ s.prompt }}</summary>
+            <p class="text">
+              {{ s.prompt }}<span class="completion">{{ s.completion }}</span>
+            </p>
+          </details>
+        }
+      </section>
+    }
+  </div>
+} @else if (data.sparkManifest.isLoading() || data.sparkArchitecture.isLoading()) {
+  <div class="awaiting" role="status"><p>Loading Spark artifacts…</p></div>
+} @else {
+  <div class="awaiting" role="status">
+    <h2>Awaiting the first Spark export</h2>
+    <p>No <code>observatory/spark/manifest.json</code> is published yet.</p>
+  </div>
+}

@@ -1,59 +1,108 @@
-<section class="page" aria-labelledby="obs-title">
-  <div class="visual" aria-hidden="true">
-    <svg viewBox="0 0 400 340" class="scene">
-      <defs>
-        <linearGradient id="obs-slab" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#121821" />
-          <stop offset="1" stop-color="#1d2633" />
-        </linearGradient>
-        <radialGradient id="obs-glow" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stop-color="#f5a524" stop-opacity="0.55" />
-          <stop offset="1" stop-color="#f5a524" stop-opacity="0" />
-        </radialGradient>
-      </defs>
-      <g class="galaxy">
-        @for (s of stars; track $index) {
-          <circle [attr.cx]="s.x" [attr.cy]="s.y" [attr.r]="s.s" [style.animation-delay.s]="s.d" />
+<div class="obs" [class.split]="split()">
+  @if (split()) {
+    <section class="terminal-pane" aria-label="Terminal">
+      <cd-terminal-page />
+    </section>
+  }
+  <section class="obs-pane" aria-labelledby="obs-heading">
+    <header class="obs-bar">
+      <h1 id="obs-heading" class="obs-title mono">observatory</h1>
+      <nav class="scenes" aria-label="Observatory scenes">
+        @for (s of scenes; track s.path) {
+          <a
+            class="scene-link"
+            [routerLink]="s.path"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            queryParamsHandling="preserve"
+            [title]="s.title"
+            >{{ s.label }}</a
+          >
         }
-      </g>
-      <g class="tower">
-        @for (l of layers; track l) {
-          <path
-            class="slab"
-            [attr.d]="'M200 ' + (286 - l * 16) + ' l70 -20 l-70 -20 l-70 20 Z'"
-            [style.animation-delay.ms]="l * 120"
-          />
-        }
-      </g>
-      <circle class="glow" cx="200" cy="40" r="36" fill="url(#obs-glow)" />
-      <circle class="spark" cx="200" cy="286" r="3.5" />
-    </svg>
-  </div>
+      </nav>
+      <div class="spacer"></div>
+      @if (proChoices().length || sparkChoices().length) {
+        <label class="model-select">
+          <span class="sr-only">Model version</span>
+          <select
+            class="mono"
+            [ngModel]="selectedModel()"
+            (ngModelChange)="selectModel($event)"
+            aria-label="Model version"
+          >
+            @if (proChoices().length) {
+              <optgroup label="Candela Pro">
+                @for (c of proChoices(); track c.id) {
+                  <option [value]="c.id">{{ c.label }} · {{ c.status }}</option>
+                }
+              </optgroup>
+            }
+            @if (sparkChoices().length) {
+              <optgroup label="Candela Spark">
+                @for (c of sparkChoices(); track c.id) {
+                  <option [value]="c.id">{{ c.label }} · {{ c.status }}</option>
+                }
+              </optgroup>
+            }
+          </select>
+        </label>
+      }
+      <button
+        type="button"
+        class="toggle mono"
+        [attr.aria-pressed]="ui.dataView()"
+        [disabled]="!ui.webgl2"
+        (click)="ui.dataView.set(!ui.dataView())"
+      >
+        {{ ui.dataView() ? '3D view' : 'Data' }}
+      </button>
+      @if (ui.stats(); as s) {
+        <span
+          class="stats mono"
+          title="Render rate, pixel ratio and quality tier of the current scene"
+          aria-hidden="true"
+          >{{ s.fps }} fps · {{ s.dpr }}× · {{ s.tier }}</span
+        >
+      }
+    </header>
 
-  <div class="copy">
-    <p class="kicker mono">observatory · coming online</p>
-    <h1 id="obs-title">See the model think.</h1>
-    <p class="lede">
-      The Observatory is the design view of Candela: a 3D instrument that renders the fine-tuned
-      model's layers, its LoRA adaptation and its sense of the market from real artifacts exported
-      by the training lab.
-    </p>
-    <ul class="modules">
-      @for (m of modules; track m.name) {
-        <li>
-          <span class="name mono">{{ m.name }}</span>
-          <span class="detail">{{ m.detail }}</span>
-        </li>
-      }
-    </ul>
-    <p class="status mono">
-      @if (staged() > 0) {
-        <span class="ok">●</span> {{ staged() }} model artifact{{ staged() === 1 ? '' : 's' }}
-        staged from the lab
-      } @else {
-        <span class="wait">●</span> waiting for the first training artifacts
-      }
-    </p>
-    <a routerLink="/" class="btn btn-primary">Back to the terminal</a>
-  </div>
-</section>
+    @if (!ui.webgl2) {
+      <p class="fallback" role="status">
+        This browser has no WebGL2, so the Observatory shows its numbers as tables. Open it in a
+        current desktop or mobile browser to see the 3D view.
+      </p>
+    }
+
+    <div class="scene-area">
+      <router-outlet />
+    </div>
+
+    @if (!split()) {
+      <form class="prompt-bar" (submit)="$event.preventDefault(); send()">
+        @if (liveLine()) {
+          <p class="live-line mono" aria-live="off">{{ liveLine() }}</p>
+        }
+        <div class="prompt-row">
+          <span class="caret mono" aria-hidden="true">›</span>
+          <input
+            class="mono"
+            type="text"
+            name="prompt"
+            autocomplete="off"
+            enterkeyhint="send"
+            placeholder="Ask Candela and watch the tower think…"
+            aria-label="Prompt"
+            maxlength="8000"
+            [ngModel]="prompt()"
+            (ngModelChange)="prompt.set($event)"
+          />
+          @if (chat.busy()) {
+            <button type="button" class="send" (click)="chat.stop()">Stop</button>
+          } @else {
+            <button type="submit" class="send" [disabled]="!prompt().trim()">Send</button>
+          }
+        </div>
+      </form>
+    }
+  </section>
+</div>

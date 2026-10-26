@@ -1,63 +1,107 @@
-import { Component, computed, resource } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import {
+  ActivatedRoute,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { map } from 'rxjs';
+import { ChatService } from '../core/chat/chat.service';
+import { CommandService } from '../core/commands/commands';
+import { GatewayService } from '../core/gateway/gateway.service';
+import { answerText } from '../core/state/conversation.model';
+import { ConversationsStore } from '../core/state/conversations.store';
+import { TelemetryStore } from '../core/telemetry/telemetry.store';
+import { LayoutService } from '../shell/layout.service';
+import { TerminalPage } from '../terminal/terminal-page';
+import { ObservatoryDataService } from './data/observatory-data.service';
+import { ObservatoryUi } from './observatory-ui.service';
 
-interface ManifestSummary {
-  current?: string;
-  models?: { id: string; status: string; displayName: string }[];
-}
-
-const MODULES = [
-  {
-    name: 'Architecture Tower',
-    detail: 'Every decoder layer as a slab; residual norms pulse per generated token.',
-  },
-  {
-    name: 'Fine-tune Field',
-    detail: 'LoRA update norms per layer and projection, scrubbed across checkpoints.',
-  },
-  {
-    name: 'Embedding Galaxy',
-    detail: 'US equities placed by how the model represents them, colored by sector.',
-  },
-  {
-    name: 'Lab HUD',
-    detail: 'Training loss, resource-guard pauses and base-vs-tuned evaluation deltas.',
-  },
+const SCENES = [
+  { path: 'tower', label: 'Tower', title: 'Architecture Tower' },
+  { path: 'field', label: 'Fine-tune', title: 'Fine-tune Field' },
+  { path: 'galaxy', label: 'Galaxy', title: 'Embedding Galaxy' },
+  { path: 'lab', label: 'Lab HUD', title: 'Lab HUD' },
+  { path: 'spark', label: 'Spark Lab', title: 'Spark Lab' },
 ];
 
 @Component({
   selector: 'cd-observatory-page',
-  imports: [RouterLink],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, TerminalPage],
   templateUrl: './observatory-page.html',
   styleUrl: './observatory-page.css',
 })
 export class ObservatoryPage {
-  protected readonly modules = MODULES;
-  protected readonly layers = Array.from({ length: 14 }, (_, i) => i);
-  protected readonly stars = Array.from({ length: 42 }, (_, i) => {
-    const a = i * 2.399963;
-    const r = 30 + ((i * 37) % 100);
-    return {
-      x: 200 + Math.cos(a) * r * 1.6,
-      y: 170 + Math.sin(a) * r * 0.55,
-      d: (i % 7) * 0.4,
-      s: 0.6 + (i % 3) * 0.5,
-    };
+  protected readonly layout = inject(LayoutService);
+  protected readonly data = inject(ObservatoryDataService);
+  protected readonly ui = inject(ObservatoryUi);
+  protected readonly telemetry = inject(TelemetryStore);
+  protected readonly gateway = inject(GatewayService);
+  protected readonly chat = inject(ChatService);
+  private readonly commands = inject(CommandService);
+  private readonly store = inject(ConversationsStore);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  protected readonly scenes = SCENES;
+  protected readonly prompt = signal('');
+  protected readonly split = computed(() => this.layout.isWide());
+
+  private readonly query = toSignal(this.route.queryParamMap.pipe(map((q) => q.get('model'))), {
+    initialValue: null,
   });
 
-  protected readonly manifest = resource({
-    loader: async ({ abortSignal }) => {
-      const response = await fetch('/observatory/manifest.json', {
-        signal: abortSignal,
-        cache: 'no-cache',
-      });
-      if (!response.ok || !response.headers.get('content-type')?.includes('json')) return null;
-      return (await response.json()) as ManifestSummary;
-    },
+  protected readonly selectedModel = computed(
+    () => this.data.requestedModel() ?? this.data.proModel()?.id ?? '',
+  );
+
+  protected readonly proChoices = computed(() =>
+    this.data.choices().filter((c) => c.group === 'Candela Pro'),
+  );
+  protected readonly sparkChoices = computed(() =>
+    this.data.choices().filter((c) => c.group === 'Candela Spark'),
+  );
+
+  protected readonly liveLine = computed(() => {
+    this.telemetry.count();
+    const turns = this.store.active()?.turns ?? [];
+    const last = turns.at(-1);
+    if (last?.kind !== 'assistant') return '';
+    const text = answerText(last).replace(/\s+/g, ' ').trim();
+    if (text) return text.length > 120 ? `…${text.slice(-119)}` : text;
+    if (last.status === 'queued') return `queued · position ${last.queue?.position ?? '?'}`;
+    if (last.status === 'pending' || last.status === 'streaming') return 'thinking…';
+    return '';
   });
 
-  protected readonly staged = computed(() => {
-    const m = this.manifest.hasValue() ? this.manifest.value() : null;
-    return m?.models?.length ?? 0;
-  });
+  constructor() {
+    effect(() => this.data.requestedModel.set(this.query()));
+
+    const visible = () =>
+      this.telemetry.observatoryVisible.set(document.visibilityState === 'visible');
+    visible();
+    document.addEventListener('visibilitychange', visible);
+    inject(DestroyRef).onDestroy(() => {
+      document.removeEventListener('visibilitychange', visible);
+      this.telemetry.observatoryVisible.set(false);
+    });
+  }
+
+  protected selectModel(id: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route.firstChild ?? this.route,
+      queryParams: { model: id || null, step: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  protected send(): void {
+    const text = this.prompt().trim();
+    if (!text || this.chat.busy()) return;
+    this.prompt.set('');
+    if (!this.commands.execute(text)) void this.chat.send(text);
+  }
 }

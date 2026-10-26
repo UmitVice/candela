@@ -1,0 +1,100 @@
+.sub {
+  margin: 2px 0 0;
+  color: var(--fg-1);
+  font-size: 11.5px;
+}
+
+.find {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.find input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  font-size: 12px;
+}
+
+.mini {
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.mini:hover {
+  color: var(--fg-0);
+  border-color: var(--fg-2);
+}
+
+.mini.primary {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sectors ul {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-0);
+  font-size: 11.5px;
+  text-align: left;
+}
+
+.sector:hover {
+  background: var(--bg-2);
+}
+
+.sector[aria-pressed='false'] {
+  color: var(--fg-2);
+}
+
+.sector[aria-pressed='false'] .swatch {
+  opacity: 0.25;
+}
+
+.sname {
+  flex: 1;
+}
+
+.count {
+  color: var(--fg-2);
+  font-size: 10.5px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.notice {
+  color: var(--accent);
+}

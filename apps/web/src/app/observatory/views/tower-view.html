@@ -1,0 +1,104 @@
+@if (spec(); as s) {
+  @if (ui.dataView()) {
+    <section class="data" aria-labelledby="tower-data-title">
+      <h2 id="tower-data-title">Architecture Tower · {{ s.label }}</h2>
+      <p class="note">
+        Each decoder layer is a slab. Heads sit on a ring and share colours by KV group. While a
+        generation streams, a slab's glow is its residual-stream norm divided by the largest norm of
+        that token.
+      </p>
+      <cd-data-table caption="Architecture" [columns]="specColumns" [rows]="specRows()" />
+      <cd-data-table
+        caption="Last token · top-5 next-token distribution"
+        [columns]="topColumns"
+        [rows]="topRows()"
+      />
+      <cd-data-table
+        caption="Last token · residual norm per layer"
+        [columns]="layerColumns"
+        [rows]="layerRows()"
+      />
+    </section>
+  } @else {
+    <div class="stage">
+      <cd-scene-canvas [module]="module()" (hovered)="onHover($event)" />
+
+      <section class="overlay tl" aria-label="Model">
+        <p class="kicker mono">architecture tower</p>
+        <h2>{{ s.label }}</h2>
+        <dl>
+          <dt>layers</dt>
+          <dd>{{ s.layers }}</dd>
+          <dt>heads · KV</dt>
+          <dd>{{ s.heads }} · {{ s.kvHeads }}</dd>
+          <dt>hidden · MLP</dt>
+          <dd>{{ s.hiddenSize }} · {{ s.intermediateSize }}</dd>
+          <dt>vocab</dt>
+          <dd>{{ s.vocabSize.toLocaleString('en-US') }}</dd>
+        </dl>
+      </section>
+
+      <section class="overlay tr hide-mobile" aria-label="Legend">
+        <ul class="legend">
+          <li>
+            <span class="swatch" style="background: #f5a524"></span>slab glow = residual norm ÷
+            token max
+          </li>
+          <li>
+            <span class="swatch" style="display: flex; gap: 1px; width: auto">
+              @for (k of kvLegend(); track $index) {
+                <span style="width: 6px; height: 10px" [style.background]="k.color"></span>
+              }
+            </span>
+            heads by KV group ({{ s.kvHeads }})
+          </li>
+          @if (s.loraLayers.length) {
+            <li>
+              <span class="swatch" style="border: 1px solid #f5a524"></span>amber edges = LoRA
+              layers
+            </li>
+          }
+          @if (s.layerKinds.includes('global')) {
+            <li>
+              <span class="swatch" style="border: 1px solid #38bdf8"></span>bright edges = global
+              attention
+            </li>
+          }
+          <li><span class="swatch" style="background: #ff6a2b"></span>flame = entropy</li>
+        </ul>
+      </section>
+
+      <section class="overlay bl" aria-label="Telemetry" aria-live="off">
+        <span class="live mono">
+          <span class="dot" [class.on]="status().live" aria-hidden="true"></span>
+          {{ status().live ? 'live telemetry' : 'telemetry idle' }}
+        </span>
+        <p style="margin: 4px 0 0">{{ status().text }}</p>
+        @if (mismatch(); as m) {
+          <p style="margin: 4px 0 0; color: var(--warn)">
+            Frames come from {{ m.name
+            }}{{ m.remapped ? '; its layers are mapped onto this tower proportionally' : '' }}.
+          </p>
+        }
+      </section>
+
+      @if (hover(); as h) {
+        <div class="tooltip" [style.left.px]="h.x" [style.top.px]="h.y" role="tooltip">
+          @for (line of h.text; track $index) {
+            <div>{{ line }}</div>
+          }
+        </div>
+      }
+    </div>
+  }
+} @else if (loading()) {
+  <div class="awaiting" role="status"><p>Loading the architecture…</p></div>
+} @else {
+  <div class="awaiting" role="status">
+    <h2>Awaiting the first training run</h2>
+    <p>
+      No <code>architecture.json</code> is published and the gateway reports no model architecture
+      yet.
+    </p>
+  </div>
+}

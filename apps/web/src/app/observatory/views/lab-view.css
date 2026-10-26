@@ -1,0 +1,111 @@
+:host {
+  overflow: auto;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  align-content: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-1);
+}
+
+.card.wide,
+.card.summary {
+  grid-column: 1 / -1;
+}
+
+.card h2 {
+  margin: 0;
+  color: var(--fg-0);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card h3 {
+  margin: 0 0 6px;
+  color: var(--fg-1);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kicker {
+  margin: 0 0 2px;
+  color: var(--accent);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sub {
+  margin: 2px 0 0;
+  color: var(--fg-2);
+  font-size: 12px;
+}
+
+.sub code {
+  color: var(--accent);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 14px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+dt {
+  color: var(--fg-2);
+}
+
+dd {
+  margin: 0;
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.good {
+  color: var(--accent);
+}
+
+.bad {
+  color: var(--down);
+}
+
+.sample {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+
+.sample summary {
+  cursor: pointer;
+  color: var(--fg-1);
+  font-size: 11.5px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.text {
+  margin: 0;
+  color: var(--fg-0);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+}
