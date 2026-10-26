@@ -44,6 +44,7 @@ class Settings:
     prompt_cache_entries: int
     prompt_cache_mb: int
     cache_limit_mb: int
+    telemetry_fps: float
     production: bool
     models_config: Path
     served_config: Path
@@ -69,6 +70,7 @@ class Settings:
             prompt_cache_entries=_env_int("CANDELA_WORKER_PROMPT_CACHE_ENTRIES", 4),
             prompt_cache_mb=_env_int("CANDELA_WORKER_PROMPT_CACHE_MB", 1024),
             cache_limit_mb=_env_int("CANDELA_WORKER_MLX_CACHE_MB", 512),
+            telemetry_fps=min(_env_float("CANDELA_WORKER_TELEMETRY_FPS", 18.0), 20.0),
             production=os.environ.get("CANDELA_ENV", "development") == "production",
             models_config=resolve_path(
                 os.environ.get("CANDELA_WORKER_MODELS_CONFIG", "ml/configs/models.yaml")

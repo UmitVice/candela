@@ -12,6 +12,17 @@ def _list(a: mx.array) -> list[Any]:
     return cast(list[Any], a.tolist())
 
 
+def _top_ids(x: mx.array, k: int) -> mx.array:
+    """Indices of the k largest values per row, best first. Repeated argmax is several times faster than
+    `argpartition` over a 262 k vocabulary on Apple GPUs (≈2 ms vs ≈11–18 ms for 13 rows)."""
+    ids = []
+    for _ in range(k):
+        i = mx.argmax(x, axis=-1, keepdims=True)
+        ids.append(i)
+        x = mx.put_along_axis(x, i, mx.array(-mx.inf, dtype=x.dtype), axis=-1)
+    return mx.concatenate(ids, axis=-1)
+
+
 class _Recorder:
     def __init__(self) -> None:
         self.active = False
@@ -80,14 +91,14 @@ class Telemetry:
         norms = mx.sqrt((hs * hs).sum(axis=-1))
         lp = logprobs.reshape(-1).astype(mx.float32)
         entropy = -(mx.exp(lp) * lp).sum()
-        top_ids = mx.argpartition(-lp, TOP_K)[:TOP_K]
+        top_ids = _top_ids(lp[None], TOP_K)[0]
         top_p = mx.exp(lp[top_ids])
         lens_h = mx.stack([states[i] for i in self.lens_layers if i in states])
         logits = self._head(self._norm(lens_h)).astype(mx.float32)
         if self._softcap:
             logits = mx.tanh(logits / self._softcap) * self._softcap
         lens_lp = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-        lens_ids = mx.argpartition(-lens_lp, LENS_TOP, axis=-1)[:, :LENS_TOP]
+        lens_ids = _top_ids(lens_lp, LENS_TOP)
         lens_p = mx.exp(mx.take_along_axis(lens_lp, lens_ids, axis=-1))
         return {
             "layers": mx.array(idx),

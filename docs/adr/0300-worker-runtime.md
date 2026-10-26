@@ -15,7 +15,7 @@
    - The prompt cache must record exactly which tokens it has consumed.
 
    Sampling uses `mlx_lm.sample_utils.make_sampler`, detokenization uses the tokenizer's streaming detokenizer, and tool-call bodies are parsed by `mlx_lm.tool_parsers` (`gemma4`, `json_tools`). mlx-lm itself is unchanged.
-2. **One dedicated MLX thread.** Loading, generation and unloading run on a single-thread executor. Heartbeats, cancels and status updates run on the asyncio loop and never wait for the GPU. On `cancel`, the worker sends `done: cancelled` at once and the GPU thread stops at the next token or prefill chunk. Measured: 7 ms with the dev model; Gemma numbers are in `docs/status/p2-worker.md`.
+2. **One dedicated MLX thread.** Loading, generation and unloading run on a single-thread executor. Heartbeats, cancels and status updates run on the asyncio loop and never wait for the GPU. On `cancel`, the worker sends `done: cancelled` at once and the GPU thread stops at the next token or prefill chunk. Measured: the GPU stopped 7 ms after the cancel with the dev model and 44 ms after it with Gemma 12B.
 3. **Admission control with a lease reservation.** For each job the worker:
    - writes `worker.json` (priority 100) as `waiting` (gpu-lease v1.1, rules 7–9);
    - waits up to `CANDELA_WORKER_ADMISSION_WAIT_SEC` (30 s) until available memory covers the model's inference budget plus `CANDELA_WORKER_RESERVE_GB` (1 GB), or 1 GB plus the reserve if the model is already resident, with memory pressure not critical. Available memory is free + inactive + purgeable + speculative pages, the same measure the Lab and Spark guards use;
@@ -33,14 +33,23 @@
    - decode was 33 % slower;
    - greedy output diverged after 71 % of the words.
 
-   On Gemma only 8 of 48 layers have full attention, and the gateway caps prompts at about 16 k tokens. The saving does not justify the quality and speed cost (Gemma numbers in the status report). The option stays available for long-context experiments, and ADR 0010's TurboQuant evaluation remains open.
+   Gemma 4 12B with the pilot adapter at 5 040 prompt tokens:
+   - only 8 of 48 layers have full attention, so KV shrank just from 404 to 365 MB (−39 MB);
+   - peak memory stayed at 8.2 GB;
+   - decode was 15.3 vs 15.0 tokens/s, and the greedy text was identical.
+
+   The gateway caps prompts at about 16 k tokens, and at that size the saving still does not justify the cost. The option stays available for long-context experiments, and ADR 0010's TurboQuant evaluation remains open.
 7. **Telemetry by wrapping layers.** `TappedLayer` wraps each decoder layer module, passes attribute access through (Gemma's mask builder reads `layer_type`), and records `h[0, -1]` only on steps chosen for a frame (at most one per 55 ms, so ≤ 20 frames/s with margin for the gateway's own 50 ms throttle). For a chosen step, the MLX graph computes:
    - the L2 norms for every layer;
    - entropy and top 5 of the final log-probabilities;
    - a logit lens on every 4th layer and the last layer. The 12–13 hidden states are stacked, so the lens costs one extra LM-head pass rather than twelve, and the final norm and Gemma's logit soft-cap are applied.
 
-   Everything is evaluated together with the sampled token. Overhead with the dev model: 6.4 % decode tokens/s at 17 frames/s, identical greedy text.
-8. **Model registry.** `services/worker/served-models.yaml` maps served ids to a base in `ml/configs/models.yaml` (path, architecture, chat-template stops, inference budget) and an optional adapter path with an env override (`CANDELA_PRO_ADAPTER`). A tiny pinned `mlx-community/Qwen3-0.6B-4bit` exercises the second tool-call format and fast iteration. Gemma 4's generation config lists `<turn|>` and `<|tool_response>` as EOS but its tokenizer does not, so the worker adds the template stops itself.
+   Everything is evaluated together with the sampled token. The frame rate is configurable (`CANDELA_WORKER_TELEMETRY_FPS`, default 18, capped at 20). Measured overhead:
+   - dev model: 6.4 % of decode tokens/s at 17 frames/s;
+   - Gemma 12B: 15.9 → 11.2 tokens/s (−30 %) with a frame on every token (11 frames/s), identical greedy text.
+
+   About half of Gemma's ≈ 26 ms per frame was `argpartition` over the 262 k vocabulary (11–18 ms for 13 rows). It is now replaced by repeated argmax (≈ 2 ms); the Gemma re-measurement is listed in the status report.
+8. **Model registry.** `services/worker/served-models.yaml` maps served ids to a base in `ml/configs/models.yaml` (path, architecture, chat-template stops, inference budget) and an optional adapter path with an env override (`CANDELA_PRO_ADAPTER`). A tiny pinned `mlx-community/Qwen3-0.6B-4bit` exercises the second tool-call format and fast iteration. Gemma 4's generation config lists `<turn|>` and `<|tool_response>` as EOS but its tokenizer does not, so the worker adds the template stops itself. The generation config's `suppress_tokens` and the multimodal placeholder ids from `config.json` get a −∞ logit bias. A Gemma answer once emitted `<audio|>` mid-sentence before this was added.
 9. **Reasoning split by text markers.** Gemma's `<|channel>thought` … `<channel|>`, Qwen's `<think>` … `</think>`, and tool-call markers are matched on detokenized text. A tail that could still become a marker is held back. The splitter starts in reasoning mode when the rendered prompt ends inside a thought block (Gemma with thinking after a tool response). An unparsable or unterminated tool call becomes `error` `internal` ("malformed tool call"). Before any token this is retryable at the gateway.
 10. **Sandbox readiness.** Memory statistics and the chip name come from `host_statistics64` and `sysctlbyname` through ctypes, so `connect` spawns no process and opens no listening socket. The `hello` device label is the chip and memory size only ("Apple M5 Pro · 24 GB"), and the default worker id is the generic `candela-worker`.
 

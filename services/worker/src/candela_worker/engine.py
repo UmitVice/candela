@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 import gc
+import json
+import re
 import threading
 import time
 from collections import OrderedDict
@@ -22,7 +24,6 @@ from candela_worker.telemetry import Telemetry
 
 GB = 1024**3
 MB = 1024**2
-TELEMETRY_INTERVAL_SEC = 0.055
 KV_GROUP_SIZE = 64
 
 Emit = Callable[[str, dict[str, Any]], Awaitable[None]]
@@ -81,6 +82,17 @@ class Loaded:
     stop_ids: set[int]
     weights_mb: float
     load_sec: float
+    suppress: list[int] = field(default_factory=list)
+    _bias: mx.array | None = None
+
+    def logit_bias(self, vocab: int) -> mx.array | None:
+        if not self.suppress:
+            return None
+        if self._bias is None or self._bias.shape[-1] != vocab:
+            bias = mx.zeros((vocab,), dtype=mx.float32)
+            ids = mx.array([i for i in self.suppress if i < vocab])
+            self._bias = mx.put_along_axis(bias, ids, mx.array(-mx.inf, dtype=mx.float32), axis=0)
+        return self._bias
 
 
 class PromptCacheLRU:
@@ -148,6 +160,22 @@ def quantize_kv(cache: list[Any], start: int, bits: int) -> None:
     for i, c in enumerate(cache):
         if type(c) is KVCache and c.offset >= start:
             cache[i] = c.to_quantized(group_size=KV_GROUP_SIZE, bits=bits)
+
+
+_MULTIMODAL_KEY = re.compile(r"^(boi|eoi|boa|eoa|bov|eov|image|audio|video)_token_(id|index)$")
+
+
+def _suppressed_tokens(path: Path) -> list[int]:
+    """Tokens a text-only chat must never emit: the generation config's `suppress_tokens` (Gemma 4 lists its
+    end-of-image/audio markers there) and the multimodal placeholder ids from config.json."""
+    out: set[int] = set()
+    with contextlib.suppress(OSError, ValueError):
+        gen = json.loads((path / "generation_config.json").read_text())
+        out.update(int(i) for i in gen.get("suppress_tokens") or [])
+    with contextlib.suppress(OSError, ValueError):
+        cfg = json.loads((path / "config.json").read_text())
+        out.update(int(v) for k, v in cfg.items() if _MULTIMODAL_KEY.match(k) and isinstance(v, int))
+    return sorted(out)
 
 
 def _weights_mb(path: Path) -> float:
@@ -270,6 +298,7 @@ class Engine:
             stop_ids=stop_ids,
             weights_mb=_weights_mb(path) + (_weights_mb(spec.adapter) if spec.adapter else 0.0),
             load_sec=time.perf_counter() - started,
+            suppress=_suppressed_tokens(path),
         )
         self.loaded = loaded
         _log.info(
@@ -442,12 +471,13 @@ class Engine:
         sampler = make_sampler(temp=job.temperature, top_p=job.top_p)
         tele = lm.telemetry if job.telemetry else None
         last_frame = [0.0]
+        interval = 1.0 / max(self.settings.telemetry_fps, 0.1)
 
         def due() -> bool:
             if tele is None:
                 return False
             now = time.perf_counter()
-            if now - last_frame[0] >= TELEMETRY_INTERVAL_SEC:
+            if now - last_frame[0] >= interval:
                 last_frame[0] = now
                 return True
             return False
@@ -456,6 +486,9 @@ class Engine:
             if probe and tele:
                 tele.arm()
             logits = model(y[None], cache=cache)[:, -1, :]
+            bias = lm.logit_bias(logits.shape[-1])
+            if bias is not None:
+                logits = logits + bias
             states = tele.disarm() if probe and tele else None
             quantize_kv(cache, self.settings.kv_start, kv_bits)
             logprobs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
