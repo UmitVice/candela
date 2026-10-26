@@ -556,6 +556,7 @@ class Engine:
             "tps": usage["tokensPerSecond"],
             "ttft_ms": usage["timeToFirstTokenMs"],
             "peak_mb": round(peak_mb),
+            "kv_mb": round(sum(c.nbytes for c in cache) / MB),
             "prompt_cache_mb": round(self._cache.nbytes / MB),
         }
         _log.info("job finished", job=job.job_id, model=spec.id, **self.last_stats)

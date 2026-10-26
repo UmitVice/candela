@@ -28,6 +28,7 @@ class Run:
     decode_tps: float
     tokens: int
     peak_mb: float
+    kv_mb: float
     text: str
     frames: int
 
@@ -70,6 +71,7 @@ async def _one(
         decode_tps=float(usage.get("tokensPerSecond", 0.0)),
         tokens=int(usage.get("completionTokens", 0)),
         peak_mb=float(st.get("peak_mb", 0)),
+        kv_mb=float(st.get("kv_mb", 0)),
         text="".join(text),
         frames=frames,
     )
@@ -122,7 +124,9 @@ async def bench(
                 "promptTokens": engine.last_stats.get("prompt_tokens"),
                 "peakMbFp16": plain.peak_mb,
                 "peakMb8bit": quant.peak_mb,
-                "savedMb": round(plain.peak_mb - quant.peak_mb),
+                "kvMbFp16": plain.kv_mb,
+                "kvMb8bit": quant.kv_mb,
+                "kvSavedMb": round(plain.kv_mb - quant.kv_mb),
                 "decodeTpsFp16": plain.decode_tps,
                 "decodeTps8bit": quant.decode_tps,
                 "greedyWordAgreement": _agreement(plain.text, quant.text),
