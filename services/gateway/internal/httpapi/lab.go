@@ -23,7 +23,7 @@ const (
 var (
 	sparkIdentRE  = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
 	sparkStateRE  = regexp.MustCompile(`^[a-z][a-z-]{0,23}$`)
-	sparkReasonRE = regexp.MustCompile(`^[A-Za-z0-9 ,.:()%=-]{1,120}$`)
+	sparkReasonRE = regexp.MustCompile(`^[A-Za-z0-9 ,.%=-]{1,120}$`)
 )
 
 type sparkTrain struct {
@@ -96,19 +96,16 @@ func ident(s string) string {
 }
 
 // pauseReason keeps the coarse reason only: the trainer may embed a foreign process
-// name in parentheses, which is local information that must not reach visitors.
+// name in parentheses or after a colon, which is local information that must not reach visitors.
 func pauseReason(p *string) *string {
 	if p == nil {
 		return nil
 	}
-	r := strings.TrimSpace(*p)
+	r, _, _ := strings.Cut(*p, "(")
+	r, _, _ = strings.Cut(r, ":")
+	r = strings.TrimSpace(r)
 	if !sparkReasonRE.MatchString(r) {
-		r, _, _ = strings.Cut(r, "(")
-		r, _, _ = strings.Cut(r, ":")
-		r = strings.TrimSpace(r)
-		if !sparkReasonRE.MatchString(r) {
-			r = "paused"
-		}
+		r = "paused"
 	}
 	return &r
 }
