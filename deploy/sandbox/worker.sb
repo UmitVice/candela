@@ -1,0 +1,70 @@
+;; Candela MLX worker sandbox (ADR 0008, layer 4). Applied by cmd/edge through sandbox-exec.
+;; Parameters (absolute, symlink-free paths): PYTHON (interpreter), PYTHON_APP (the framework
+;; build re-executes itself as Python.app; same as PYTHON otherwise), PYTHON_HOME (its framework
+;; or prefix), VENV, WORKER_DIR, MODELS_CONFIG, LEASE_DIR, TMP_DIR, USER_CACHE, HOME and
+;; READ_0..READ_5 (model, adapter and dev-model directories, read-only; unused ones point
+;; at a path that does not exist).
+(version 1)
+(deny default)
+(import "system.sb")
+
+(allow file-read-metadata)
+
+;; Only the interpreter runs; the worker spawns no processes.
+(allow process-exec (literal (param "PYTHON")) (literal (param "PYTHON_APP")))
+(deny process-fork)
+
+(allow file-read* file-map-executable
+  (subpath (param "PYTHON_HOME"))
+  (subpath (param "VENV")))
+;; Homebrew libraries linked by the interpreter's extension modules (otool -L).
+(allow file-read* file-map-executable
+  (subpath "/opt/homebrew/opt/python@3.14") (subpath "/opt/homebrew/opt/openssl@3") (subpath "/opt/homebrew/Cellar/openssl@3")
+  (subpath "/opt/homebrew/opt/mpdecimal") (subpath "/opt/homebrew/Cellar/mpdecimal")
+  (subpath "/opt/homebrew/opt/sqlite") (subpath "/opt/homebrew/Cellar/sqlite")
+  (subpath "/opt/homebrew/opt/xz") (subpath "/opt/homebrew/Cellar/xz")
+  (subpath "/opt/homebrew/opt/zstd") (subpath "/opt/homebrew/Cellar/zstd"))
+(allow file-read*
+  (subpath (param "WORKER_DIR"))
+  (literal (param "MODELS_CONFIG"))
+  (subpath (param "READ_0"))
+  (subpath (param "READ_1"))
+  (subpath (param "READ_2"))
+  (subpath (param "READ_3"))
+  (subpath (param "READ_4"))
+  (subpath (param "READ_5")))
+(allow file-read* file-write* (subpath (param "LEASE_DIR")) (subpath (param "TMP_DIR")))
+;; Metal shader and JIT module caches (keyed by the Python.app bundle id). MTLCompilerService
+;; writes them on the worker's behalf through a sandbox extension the worker must be allowed to issue.
+(allow file-read* file-write* file-issue-extension
+  (subpath (string-append (param "USER_CACHE") "com.apple.metal"))
+  (subpath (string-append (param "USER_CACHE") "org.python.python")))
+(allow file-read* file-write-data (literal "/dev/null") (literal "/dev/urandom") (literal "/dev/random"))
+(allow file-read* (literal "/private/etc/hosts") (literal "/private/etc/localtime")
+  (subpath "/private/var/db/timezone") (literal "/private/var/db/DetachedSignatures"))
+
+(allow sysctl-read)
+(allow signal (target self))
+(allow ipc-posix-shm-read-data (ipc-posix-name "apple.shm.notification_center"))
+(allow mach-lookup (global-name "com.apple.system.notification_center" "com.apple.logd" "com.apple.diagnosticd"
+  "com.apple.system.opendirectoryd.libinfo" "com.apple.MTLCompilerService" "com.apple.PowerManagement.control"
+  "com.apple.dnssd.service"))
+(allow network-outbound (literal "/private/var/run/mDNSResponder"))
+
+;; Metal on Apple Silicon.
+(allow iokit-open
+  (iokit-user-client-class "AGXDeviceUserClient" "AGXSharedUserClient" "IOGPUDeviceUserClient"
+    "IOSurfaceRootUserClient" "IOAccelDevice2" "IOAccelSharedUserClient2" "RootDomainUserClient"))
+(allow iokit-get-properties)
+(allow file-read* (subpath "/Library/GPUBundles"))
+
+;; The worker dials out to the gateway's internal listener and nowhere else.
+(allow network-outbound (remote tcp "localhost:8719"))
+
+(deny file-read* file-write*
+  (regex #"/\.env(\..*)?$")
+  (subpath (string-append (param "HOME") "/.ssh"))
+  (subpath (string-append (param "HOME") "/.config"))
+  (literal (string-append (param "HOME") "/.cache/huggingface/token"))
+  (subpath (string-append (param "HOME") "/.cache/huggingface/stored_tokens"))
+  (subpath (string-append (param "HOME") "/Library/Keychains")))

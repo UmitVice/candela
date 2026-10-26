@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional login agent for the Candela live stack. Not installed automatically: the owner decides
+  (make live-agent-install renders __REPO__ and __HOME__ and bootstraps it; make live-agent-uninstall removes it).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.candela.edge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>/usr/bin/caffeinate -i -w $$ &amp; exec ./services/gateway/bin/edge run</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+  <key>ExitTimeOut</key>
+  <integer>200</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/Candela/edge.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/Candela/edge.log</string>
+</dict>
+</plist>

@@ -1,0 +1,46 @@
+;; Candela gateway sandbox (ADR 0008, layer 4). Applied by cmd/edge through sandbox-exec.
+;; Parameters (absolute, symlink-free paths): BIN, SNAPSHOT, STATE_DIR, SPARK_STATUS.
+(version 1)
+(deny default)
+(import "system.sb")
+
+;; Path resolution needs stat on parent directories; reading contents stays denied.
+(allow file-read-metadata)
+
+;; sandbox-exec execs the gateway binary itself; nothing else may run, and no forks.
+(allow process-exec (literal (param "BIN")))
+(allow file-read* file-map-executable (literal (param "BIN")))
+(deny process-fork)
+
+(allow file-read* (literal (param "SNAPSHOT")) (literal (param "SPARK_STATUS")))
+(allow file-read* file-write* (subpath (param "STATE_DIR")))
+(allow file-read* file-write-data (literal "/dev/null") (literal "/dev/urandom") (literal "/dev/random"))
+(allow file-read* (literal "/private/etc/hosts") (literal "/private/etc/resolv.conf") (literal "/private/var/run/resolv.conf") (literal "/private/etc/services")
+  (literal "/private/etc/protocols") (subpath "/private/var/db/timezone") (literal "/private/etc/localtime"))
+
+(allow sysctl-read)
+(allow signal (target self))
+(allow ipc-posix-shm-read-data (ipc-posix-name "apple.shm.notification_center"))
+;; TLS trust evaluation and the system DNS resolver.
+(allow mach-lookup (global-name "com.apple.trustd" "com.apple.trustd.agent" "com.apple.SecurityServer"
+  "com.apple.ocspd" "com.apple.dnssd.service" "com.apple.system.opendirectoryd.libinfo"
+  "com.apple.system.notification_center" "com.apple.logd" "com.apple.diagnosticd"))
+(allow file-read* (subpath "/private/var/db/mds") (subpath "/Library/Keychains/System.keychain")
+  (literal "/private/var/db/DetachedSignatures"))
+(allow network-outbound (literal "/private/var/run/mDNSResponder"))
+
+;; Loopback listeners only: public 8710 (tunnelled) and internal 8719 (never tunnelled).
+(allow network-bind network-inbound (local ip "localhost:8710") (local ip "localhost:8719"))
+;; Outbound HTTPS for allowlisted market-data hosts; the Go egress client also refuses
+;; loopback, private and link-local addresses after DNS resolution.
+(allow network-outbound (remote ip "*:443"))
+(allow network-outbound (remote ip "*:53"))
+(deny network-outbound (remote ip "localhost:*"))
+
+;; Credentials and secrets stay unreadable even if a later rule were widened by mistake.
+(deny file-read* file-write*
+  (regex #"/\.env(\..*)?$")
+  (subpath (string-append (param "HOME") "/.ssh"))
+  (subpath (string-append (param "HOME") "/.config"))
+  (subpath (string-append (param "HOME") "/.cache/huggingface"))
+  (subpath (string-append (param "HOME") "/Library/Keychains")))

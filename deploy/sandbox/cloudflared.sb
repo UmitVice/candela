@@ -1,0 +1,41 @@
+;; cloudflared quick-tunnel sandbox (ADR 0008, layers 1 and 4). Applied by cmd/edge through sandbox-exec.
+;; Parameters (absolute, symlink-free paths): BIN, HOME (the owner's home, for deny rules).
+(version 1)
+(deny default)
+(import "system.sb")
+
+(allow file-read-metadata)
+
+(allow process-exec (literal (param "BIN")))
+(allow file-read* file-map-executable (literal (param "BIN")))
+(deny process-fork)
+
+(allow file-read* file-write-data (literal "/dev/null") (literal "/dev/urandom") (literal "/dev/random"))
+(allow file-read* (literal "/private/etc/hosts") (literal "/private/etc/resolv.conf") (literal "/private/var/run/resolv.conf") (literal "/private/etc/services")
+  (literal "/private/etc/protocols") (literal "/private/etc/localtime") (subpath "/private/var/db/timezone"))
+
+(allow sysctl-read)
+(allow signal (target self))
+(allow ipc-posix-shm-read-data (ipc-posix-name "apple.shm.notification_center"))
+(allow mach-lookup (global-name "com.apple.trustd" "com.apple.trustd.agent" "com.apple.SecurityServer"
+  "com.apple.ocspd" "com.apple.dnssd.service" "com.apple.system.opendirectoryd.libinfo"
+  "com.apple.system.notification_center" "com.apple.logd" "com.apple.diagnosticd"))
+(allow file-read* (subpath "/private/var/db/mds") (subpath "/Library/Keychains/System.keychain")
+  (literal "/private/var/db/DetachedSignatures"))
+(allow network-outbound (literal "/private/var/run/mDNSResponder"))
+
+;; Cloudflare edge: quick-tunnel API over HTTPS, tunnel transport on 7844 (QUIC or HTTP/2), DNS.
+(allow network-outbound (remote ip "*:443") (remote ip "*:7844") (remote ip "*:53"))
+;; The only local destination is the gateway's public listener; the internal listener (8719)
+;; and every other local service stay unreachable from the tunnel.
+(deny network-outbound (remote ip "localhost:*"))
+(allow network-outbound (remote tcp "localhost:8710"))
+;; Local readiness/metrics endpoint used by the supervisor.
+(allow network-bind network-inbound (local ip "localhost:8717"))
+
+(deny file-read* file-write*
+  (regex #"/\.env(\..*)?$")
+  (subpath (string-append (param "HOME") "/.ssh"))
+  (subpath (string-append (param "HOME") "/.config"))
+  (subpath (string-append (param "HOME") "/.cache"))
+  (subpath (string-append (param "HOME") "/Library/Keychains")))

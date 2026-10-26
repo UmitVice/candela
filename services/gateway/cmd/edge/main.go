@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -66,6 +68,7 @@ type edge struct {
 	tunnel  *child
 	kill    *killSwitch
 	http    *http.Client
+	public  *http.Client
 
 	mu    sync.Mutex
 	st    state
@@ -90,7 +93,7 @@ func run() error {
 	}
 	defer unlock()
 
-	e := &edge{cfg: cfg, log: log, kill: newKillSwitch(cfg), http: &http.Client{Timeout: 10 * time.Second},
+	e := &edge{cfg: cfg, log: log, kill: newKillSwitch(cfg), http: &http.Client{Timeout: 10 * time.Second}, public: publicClient(),
 		st: state{Supervisor: os.Getpid(), Pids: map[string]int{}}}
 	e.pub = &publisher{gh: cfg.GH, home: cfg.home, enabled: cfg.Publish && cfg.Tunnel}
 	if e.pub.enabled {
@@ -192,12 +195,32 @@ func (e *edge) trackPids(ctx context.Context) {
 	}
 }
 
+// publicClient probes the tunnel the way a visitor would, but resolves names through
+// public resolvers: the system resolver caches the NXDOMAIN of a brand-new quick-tunnel
+// hostname for a minute or more and would delay going online.
+func publicClient() *http.Client {
+	var next atomic.Uint32
+	resolvers := []string{"1.1.1.1:53", "1.0.0.1:53", "8.8.8.8:53"}
+	dialer := &net.Dialer{Timeout: 5 * time.Second, Resolver: &net.Resolver{PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			d := net.Dialer{Timeout: 3 * time.Second}
+			return d.DialContext(ctx, network, resolvers[next.Add(1)%uint32(len(resolvers))])
+		}}}
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DialContext = dialer.DialContext
+	return &http.Client{Timeout: 10 * time.Second, Transport: t}
+}
+
 func (e *edge) get(ctx context.Context, url string) (int, error) {
+	client := e.http
+	if strings.HasPrefix(url, "https://") {
+		client = e.public
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, err
 	}
-	resp, err := e.http.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -306,6 +329,9 @@ func (e *edge) tunnelSession(ctx context.Context) (tunnelEnd, string) {
 	}
 	url := "https://" + host
 	e.setState("connecting", url, "")
+	if err := e.waitURL(tctx, "http://"+tunnelMetrics+"/ready", time.Minute); err != nil {
+		return e.ended(ctx, endRestart, "cloudflared not connected: "+err.Error())
+	}
 	if err := e.waitURL(tctx, url+"/readyz", 2*time.Minute); err != nil {
 		return e.ended(ctx, endRestart, "tunnel readiness: "+err.Error())
 	}
@@ -315,6 +341,9 @@ func (e *edge) tunnelSession(ctx context.Context) (tunnelEnd, string) {
 	e.setState("online", url, "")
 	e.log.Info("online", "gatewayUrl", url, "published", e.pub.enabled)
 	e.kill.reset()
+	if counts, err := e.kill.scrape(tctx); err == nil {
+		e.kill.observe(time.Now(), counts)
+	}
 
 	heartbeat := time.NewTicker(e.cfg.Heartbeat)
 	defer heartbeat.Stop()

@@ -19,7 +19,10 @@ const (
 	endpointFile  = "candela-endpoint.json"
 )
 
-var tunnelHostRE = regexp.MustCompile(`^[a-z0-9-]+\.trycloudflare\.com$`)
+var (
+	tunnelHostRE = regexp.MustCompile(`^[a-z0-9-]+\.trycloudflare\.com$`)
+	envKeyRE     = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
+)
 
 type config struct {
 	Repo         string `env:"CANDELA_EDGE_REPO"`
@@ -56,7 +59,49 @@ type config struct {
 	home string
 }
 
+// loadDotenv applies deploy/.env without overriding variables already set, so a shell or
+// LaunchAgent value wins. The file holds tokens, so it must not be readable by others.
+func loadDotenv(path string) error {
+	st, err := os.Stat(path) //nolint:gosec // fixed path inside the repository
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if st.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("%s must not be readable by group or others (chmod 600)", filepath.Base(path))
+	}
+	b, err := os.ReadFile(path) //nolint:gosec // fixed path inside the repository
+	if err != nil {
+		return err
+	}
+	for line := range strings.SplitSeq(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok || !envKeyRE.MatchString(k) {
+			continue
+		}
+		v = strings.Trim(strings.TrimSpace(v), `"'`)
+		if _, set := os.LookupEnv(k); !set {
+			if err := os.Setenv(k, v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func loadConfig() (*config, error) {
+	repo := os.Getenv("CANDELA_EDGE_REPO")
+	if repo == "" {
+		repo, _ = os.Getwd()
+	}
+	if err := loadDotenv(filepath.Join(repo, "deploy/.env")); err != nil {
+		return nil, err
+	}
 	var c config
 	if err := env.Parse(&c); err != nil {
 		return nil, err
