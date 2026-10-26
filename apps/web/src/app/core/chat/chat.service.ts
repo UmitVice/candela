@@ -1,6 +1,5 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { NavigationStart, Router } from '@angular/router';
 import type { ChatMessage, ChatRequest, ChatStreamEvent } from '../api/types';
 import { GatewayService } from '../gateway/gateway.service';
 import { MarketService } from '../gateway/market.service';
@@ -8,6 +7,7 @@ import type { AssistantTurn, Conversation } from '../state/conversation.model';
 import { answerText } from '../state/conversation.model';
 import { ConversationsStore } from '../state/conversations.store';
 import { PreferencesStore } from '../state/preferences.store';
+import { TelemetryStore } from '../telemetry/telemetry.store';
 import { uuid } from '../util/ids';
 import { errorEvent } from './chat-transport';
 import { applyStreamEvent } from './turn-reducer';
@@ -28,6 +28,7 @@ export class ChatService {
   private readonly market = inject(MarketService);
   private readonly prefs = inject(PreferencesStore);
   private readonly announcer = inject(LiveAnnouncer);
+  private readonly telemetry = inject(TelemetryStore);
   private readonly run = signal<ActiveRun | null>(null);
 
   readonly busy = computed(() => this.run() !== null);
@@ -35,9 +36,6 @@ export class ChatService {
   readonly lastUsage = signal<{ tokensPerSecond: number; modelId: string } | null>(null);
 
   constructor() {
-    inject(Router).events.subscribe((event) => {
-      if (event instanceof NavigationStart) this.stop();
-    });
     effect(() => {
       const active = this.store.activeId();
       const run = this.run();
@@ -139,7 +137,7 @@ export class ChatService {
       conversationId: conversation.id,
       messages: trimmed,
       model: this.requestedModel(),
-      options: { reasoning: this.prefs.reasoning(), telemetry: this.prefs.telemetry() },
+      options: { reasoning: this.prefs.reasoning(), telemetry: this.telemetry.wanted() },
     };
   }
 
@@ -176,6 +174,11 @@ export class ChatService {
     let terminal: ChatStreamEvent | null = null;
     try {
       for await (const event of transport.stream(request, controller.signal)) {
+        if (event.event === 'telemetry') {
+          this.telemetry.push(event.data);
+          continue;
+        }
+        if (event.event === 'meta') this.telemetry.begin(event.data.model);
         apply(event);
         if (event.event === 'usage' && event.data.tokensPerSecond > 0) {
           const model = this.store
@@ -202,6 +205,7 @@ export class ChatService {
         : errorEvent('upstream_unavailable', 'The stream ended before completion.');
       apply(terminal);
     }
+    this.telemetry.end();
     this.store.touch(conversationId);
     this.run.set(null);
     this.announce(conversationId, turnId);
