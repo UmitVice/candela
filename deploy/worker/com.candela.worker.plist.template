@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional login agent for the Candela worker. Not installed automatically; see deploy/worker/README.md.
+  Replace __REPO__ with the absolute repository path and __HOME__ with the home directory before installing.
+  The worker reads its configuration (gateway URL, token, model id) from services/worker/.env.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.candela.worker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>set -a; . ./.env; set +a; exec /usr/bin/caffeinate -i /usr/bin/nice -n 5 ./.venv/bin/candela-worker connect</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__/services/worker</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CANDELA_ENV</key>
+    <string>production</string>
+    <key>HF_HUB_OFFLINE</key>
+    <string>1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ExitTimeOut</key>
+  <integer>150</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/candela-worker.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/candela-worker.log</string>
+</dict>
+</plist>

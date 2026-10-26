@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import json
 from typing import Annotated
 
@@ -44,7 +45,7 @@ def connect() -> None:
             except Exception:
                 local = None
         infos.append(model_info(spec, settings, local))
-    settings = Settings(**{**settings.__dict__, "model_ids": ids})
+    settings = dataclasses.replace(settings, model_ids=ids)
     release_stale_own()
 
     async def main() -> None:
