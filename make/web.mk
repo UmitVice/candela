@@ -3,7 +3,7 @@ WEB_NETLIFY_SITE := 29663355-ecbd-43e8-8b32-9fade3ae572b
 WEB_NETLIFY := pnpm --package=netlify-cli@27.14.2 dlx netlify
 WEB_VERSION = $(shell node -p "require('./$(WEB_DIR)/package.json').version")
 
-.PHONY: web-install web-dev web-lint web-format web-build web-check web-render web-preview web-deploy web-icons
+.PHONY: web-install web-dev web-lint web-format web-build web-check web-render web-preview web-deploy web-icons web-telemetry-worker
 
 web-install: ## Install web dependencies from the lockfile
 	cd $(WEB_DIR) && pnpm install --frozen-lockfile
@@ -37,3 +37,6 @@ web-deploy: web-check web-render ## Deploy the locally built dist to Netlify (pr
 
 web-icons: ## Regenerate PNG icons from the brand mark
 	cd $(WEB_DIR) && node scripts/generate-icons.mjs
+
+web-telemetry-worker: ## Dev only: synthetic telemetry worker for the Observatory, dialing the local gateway (8719)
+	@set -a; [ -f services/gateway/.env ] && . services/gateway/.env; set +a; exec node $(WEB_DIR)/scripts/telemetry-worker.mjs
