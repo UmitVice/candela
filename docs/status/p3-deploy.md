@@ -1,6 +1,6 @@
 # p3-deploy — status
 
-STATUS: BLOCKED — Creating the public discovery Gist (`make live-init` → `gh gist create --public`) was refused by this session's auto-mode permission classifier ("Public Data-Sharing Upload"). Can someone with the owner's authority run `make live-init` once? Or allow this session to create and update the Gist? After that: `make live-up`, then `make live-web-deploy` (the single Netlify deploy).
+STATUS: BLOCKED — Creating the public discovery Gist (`make live-init` → `gh gist create --public`) is refused by this session's auto-mode permission classifier ("Public Data-Sharing Upload"). It was refused again on 2026-10-26 after the Director relayed the owner's approval: an approval passed through another session does not change this session's permissions. The owner can run `make live-init` in their own terminal (it writes `deploy/local/endpoint.json`; commit that file), or add a Bash permission rule for it in an interactive `claude` terminal. Then run `make live-up` and `make live-web-deploy` (the single Netlify deploy), or re-run this session to do both.
 
 Summary:
 The Mac-side live stack is built, hardened and verified end to end through a real quick tunnel, with publishing turned off. What is missing is the public announcement: the Gist, the production web deploy with the discovery URL, and therefore the "site chats live" acceptance.
