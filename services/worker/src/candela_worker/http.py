@@ -3,12 +3,13 @@ import contextlib
 import json
 import secrets
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.background import BackgroundTask
 
 from candela_worker.config import ModelSpec, Settings, model_info
 from candela_worker.engine import Engine, Job
@@ -60,7 +61,7 @@ def _usage(u: dict[str, Any]) -> dict[str, Any]:
 
 def create_app(settings: Settings, engine: Engine, registry: dict[str, ModelSpec]) -> FastAPI:
     @contextlib.asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         engine.start()
         try:
             yield
@@ -101,7 +102,7 @@ def create_app(settings: Settings, engine: Engine, registry: dict[str, ModelSpec
         }
 
     @app.post("/v1/chat/completions", response_model=None)
-    async def chat(body: ChatCompletionIn, request: Request) -> StreamingResponse | JSONResponse:
+    async def chat(body: ChatCompletionIn) -> StreamingResponse | JSONResponse:
         if body.model not in served or body.model not in registry:
             raise HTTPException(404, detail="unknown model")
         thinking = body.reasoning
@@ -150,8 +151,6 @@ def create_app(settings: Settings, engine: Engine, registry: dict[str, ModelSpec
                 try:
                     yield f"data: {json.dumps(chunk({'role': 'assistant'}))}\n\n"
                     while (item := await queue.get()) is not None:
-                        if await request.is_disconnected():
-                            job.cancelled.set()
                         event, data = item
                         if event == "token":
                             out = chunk({"content": data["delta"]})
@@ -172,10 +171,18 @@ def create_app(settings: Settings, engine: Engine, registry: dict[str, ModelSpec
                     yield "data: [DONE]\n\n"
                 finally:
                     job.cancelled.set()
-                    await task
+
+            async def on_close() -> None:
+                # On client disconnect Starlette cancels the response while the body iterator is suspended at a
+                # yield, so the iterator's finally only runs at garbage collection; this hook runs right away.
+                job.cancelled.set()
+                await task
 
             return StreamingResponse(
-                sse(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
+                sse(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache"},
+                background=BackgroundTask(on_close),
             )
 
         content: list[str] = []
