@@ -62,6 +62,7 @@ type Config struct {
 	VanirasURL         string        `env:"CANDELA_VANIRAS_URL"`
 	RecordSessions     bool          `env:"CANDELA_RECORD_SESSIONS" envDefault:"false"`
 	RecordingsDir      string        `env:"CANDELA_RECORDINGS_DIR" envDefault:"services/gateway/data/recordings"`
+	SparkStatusPath    string        `env:"CANDELA_SPARK_STATUS_PATH" envDefault:"${HOME}/.candela/spark/status.json" envExpand:"true"`
 	DisableSymbolFetch bool          `env:"CANDELA_DISABLE_SYMBOL_FETCH" envDefault:"false"`
 	EgressAllow        []string      `env:"CANDELA_EGRESS_ALLOW" envSeparator:"," envDefault:"www.nasdaqtrader.com,huggingface.co,*.huggingface.co,*.hf.co"`
 
@@ -198,6 +199,7 @@ func (c *Config) LogValue() slog.Value {
 		slog.String("env", c.Environment),
 		slog.String("dbPath", c.DBPath),
 		slog.String("snapshotPath", c.SnapshotPath),
+		slog.Bool("sparkStatus", set(c.SparkStatusPath)),
 		slog.Bool("snapshotURL", set(c.SnapshotURL)),
 		slog.Any("allowedOrigins", c.AllowedOrigins),
 		slog.String("trustedProxy", c.TrustedProxy),

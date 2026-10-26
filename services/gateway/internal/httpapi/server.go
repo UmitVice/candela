@@ -47,6 +47,7 @@ type Server struct {
 	chatRL   *ratelimit.Limiter
 	marketRL *ratelimit.Limiter
 	feedRL   *ratelimit.Limiter
+	spark    *sparkCache
 	draining atomic.Bool
 	hardStop context.Context
 }
@@ -57,6 +58,7 @@ func New(d Deps, hardStop context.Context) *Server {
 		chatRL:   ratelimit.New("chat", c.ChatRatePerMin, c.ChatBurst, 8192),
 		marketRL: ratelimit.New("market", c.MarketRatePerMin, c.MarketBurst, 8192),
 		feedRL:   ratelimit.New("feedback", c.FeedbackRatePerMin, c.FeedbackBurst, 8192),
+		spark:    &sparkCache{path: c.SparkStatusPath},
 	}
 }
 
@@ -100,6 +102,7 @@ func (s *Server) Public() http.Handler {
 				r.Get("/{symbol}/fundamentals", s.marketFundamentals)
 				r.Get("/{symbol}/forecast", s.marketForecast)
 			})
+			r.With(s.limit(s.marketRL)).Get("/lab/spark", s.labSpark)
 			r.With(s.limit(s.feedRL), withBodyLimit(32<<10)).Post("/feedback", s.feedback)
 		})
 		r.With(s.limit(s.chatRL), withBodyLimit(64<<10)).Post("/chat/stream", s.chatStream)

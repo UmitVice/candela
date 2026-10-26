@@ -14,6 +14,7 @@ tags:
   - name: chat
   - name: market
   - name: feedback
+  - name: lab
 paths:
   /healthz:
     get:
@@ -202,6 +203,18 @@ paths:
             application/json:
               schema: { type: object, properties: { accepted: { const: true } } }
         "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /api/v1/lab/spark:
+    get:
+      tags: [lab]
+      summary: Sanitized live status of the Candela Spark trainer (cached 10 s)
+      responses:
+        "200":
+          description: Spark trainer status (schema candela.spark.status.v1)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SparkStatus" }
+        "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/RateLimited" }
 components:
   parameters:
@@ -482,6 +495,33 @@ components:
               p50: { type: number }
               p90: { type: number }
         disclaimer: { type: string }
+    SparkStatus:
+      type: object
+      required: [schema, updatedAt, state, runId, model, parameters, phase, step, tokens, milestones]
+      properties:
+        schema: { const: candela.spark.status.v1 }
+        updatedAt: { type: string, format: date-time }
+        state: { type: string }
+        runId: { type: string }
+        model: { type: string }
+        parameters: { type: integer }
+        phase: { type: string }
+        step: { type: integer }
+        tokens: { type: integer }
+        pauseReason: { type: [string, "null"] }
+        train:
+          type: [object, "null"]
+          properties: { loss: { type: number }, tokensPerSec: { type: number }, lr: { type: number }, peakMemGb: { type: number } }
+        valid:
+          type: [object, "null"]
+          properties: { bf16: { type: number }, int4: { type: number }, gapRel: { type: number }, step: { type: integer } }
+        milestones:
+          type: array
+          items:
+            type: object
+            properties: { step: { type: integer }, tokens: { type: integer }, at: { type: string }, kind: { type: string } }
+        leasePriority: { type: integer }
+        startedAt: { type: string, format: date-time }
     FeedbackRequest:
       type: object
       required: [conversationId, messageId, rating, consentToStore]
