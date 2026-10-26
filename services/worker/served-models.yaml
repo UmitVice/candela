@@ -1,0 +1,29 @@
+# Models this worker can serve. Bases come from ml/configs/models.yaml (schema 2); `env` names the variable that
+# overrides a path. Paths are relative to the repository root unless absolute or starting with `~`.
+schema: 1
+default: candela-pro-v0.1
+
+models:
+  candela-pro-v0.1:
+    displayName: Candela Pro
+    version: v0.1
+    base: gemma-4-12b-qat
+    adapter: {path: ml/runs/candela-pro-v0.1-lr5e5/adapter, env: CANDELA_PRO_ADAPTER}
+  candela-pro-pilot:
+    displayName: Candela Pro (pilot)
+    version: v0.1-pilot
+    base: gemma-4-12b-qat
+    adapter: {path: ml/runs/pilot-candela-pro/adapter, env: CANDELA_PRO_PILOT_ADAPTER}
+  gemma-4-12b-qat-base:
+    displayName: Gemma 4 12B QAT (untuned base)
+    version: base
+    base: gemma-4-12b-qat
+  qwen3-0.6b-dev:
+    displayName: Qwen3 0.6B (dev)
+    version: dev
+    family: qwen3
+    baseModel: Qwen/Qwen3-0.6B
+    hf: {repo: mlx-community/Qwen3-0.6B-4bit, revision: 73e3e38d981303bc594367cd910ea6eb48349da8}
+    quantization: 4bit
+    parameters: 0.6B
+    memory: {inferenceBudgetGb: 1.5}
