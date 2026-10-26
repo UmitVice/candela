@@ -170,6 +170,16 @@ func withAccessLog(listener string, log *slog.Logger, m *observability.Metrics) 
 				status = http.StatusOK
 			}
 			d := time.Since(start)
+			if listener == "public" {
+				switch status {
+				case http.StatusRequestEntityTooLarge, http.StatusRequestHeaderFieldsTooLarge:
+					m.Abuse.WithLabelValues("oversized").Inc()
+				case http.StatusForbidden:
+					m.Abuse.WithLabelValues("origin").Inc()
+				case http.StatusBadRequest:
+					m.Abuse.WithLabelValues("invalid").Inc()
+				}
+			}
 			m.HTTPRequests.WithLabelValues(listener, route, r.Method, strconv.Itoa(status/100)+"xx").Inc()
 			if !strings.Contains(route, "/chat/") && !strings.Contains(route, "/worker/") {
 				m.HTTPDuration.WithLabelValues(listener, route).Observe(d.Seconds())

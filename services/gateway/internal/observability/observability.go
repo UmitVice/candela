@@ -38,6 +38,7 @@ type Metrics struct {
 	ToolDuration  *prometheus.HistogramVec
 	ToolErrors    *prometheus.CounterVec
 	RateLimited   *prometheus.CounterVec
+	Abuse         *prometheus.CounterVec
 	UpstreamRetry prometheus.Counter
 }
 
@@ -83,11 +84,14 @@ func NewMetrics() *Metrics {
 		RateLimited: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "candela_rate_limited_total", Help: "Requests rejected by the rate limiter.",
 		}, []string{"bucket"}),
+		Abuse: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "candela_abuse_total", Help: "Public requests rejected as abusive (oversized, origin, protocol, invalid); read by the edge kill switch.",
+		}, []string{"kind"}),
 		UpstreamRetry: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "candela_upstream_fallback_retries_total", Help: "Generations retried on the fallback after a worker failure.",
 		}),
 	}
 	r.MustRegister(m.HTTPRequests, m.HTTPDuration, m.ChatRequests, m.TTFT, m.TokensPerSec, m.QueueDepth,
-		m.ActiveChats, m.Workers, m.ToolDuration, m.ToolErrors, m.RateLimited, m.UpstreamRetry)
+		m.ActiveChats, m.Workers, m.ToolDuration, m.ToolErrors, m.RateLimited, m.Abuse, m.UpstreamRetry)
 	return m
 }

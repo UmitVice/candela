@@ -179,17 +179,20 @@ func (s *Server) chatWS(w http.ResponseWriter, r *http.Request) {
 	typ, data, err := conn.Read(startCtx)
 	cancelStart()
 	if err != nil {
+		s.metrics.Abuse.WithLabelValues("protocol").Inc()
 		_ = conn.Close(websocket.StatusPolicyViolation, "start frame expected within 10s")
 		return
 	}
 	var first wsClientFrame
 	if typ != websocket.MessageText || json.Unmarshal(data, &first) != nil || first.Type != "start" || len(first.Request) == 0 {
+		s.metrics.Abuse.WithLabelValues("protocol").Inc()
 		_ = conn.Close(websocket.StatusPolicyViolation, "first frame must be a start message")
 		return
 	}
 	var req chat.Request
 	dec := json.NewDecoder(bytes.NewReader(first.Request))
 	if err := dec.Decode(&req); err != nil {
+		s.metrics.Abuse.WithLabelValues("protocol").Inc()
 		_ = conn.Close(websocket.StatusPolicyViolation, "invalid request")
 		return
 	}
@@ -219,6 +222,7 @@ func (s *Server) chatWS(w http.ResponseWriter, r *http.Request) {
 			}
 			var f wsClientFrame
 			if typ != websocket.MessageText || json.Unmarshal(data, &f) != nil {
+				s.metrics.Abuse.WithLabelValues("protocol").Inc()
 				_ = conn.Close(websocket.StatusPolicyViolation, "invalid frame")
 				cancelRun()
 				return

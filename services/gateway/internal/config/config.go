@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -62,7 +64,7 @@ type Config struct {
 	VanirasURL         string        `env:"CANDELA_VANIRAS_URL"`
 	RecordSessions     bool          `env:"CANDELA_RECORD_SESSIONS" envDefault:"false"`
 	RecordingsDir      string        `env:"CANDELA_RECORDINGS_DIR" envDefault:"services/gateway/data/recordings"`
-	SparkStatusPath    string        `env:"CANDELA_SPARK_STATUS_PATH" envDefault:"${HOME}/.candela/spark/status.json" envExpand:"true"`
+	SparkStatusPath    string        `env:"CANDELA_SPARK_STATUS_PATH" envDefault:"~/.candela/spark/status.json"`
 	DisableSymbolFetch bool          `env:"CANDELA_DISABLE_SYMBOL_FETCH" envDefault:"false"`
 	EgressAllow        []string      `env:"CANDELA_EGRESS_ALLOW" envSeparator:"," envDefault:"www.nasdaqtrader.com,huggingface.co,*.huggingface.co,*.hf.co"`
 
@@ -83,6 +85,11 @@ func Load() (*Config, error) {
 	}
 	if c.Port != "" {
 		c.Addr = net.JoinHostPort("0.0.0.0", c.Port)
+	}
+	if rest, ok := strings.CutPrefix(c.SparkStatusPath, "~/"); ok {
+		if home, err := os.UserHomeDir(); err == nil {
+			c.SparkStatusPath = filepath.Join(home, rest)
+		}
 	}
 	return &c, c.validate()
 }
