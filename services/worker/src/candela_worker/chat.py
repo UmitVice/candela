@@ -23,7 +23,7 @@ FAMILIES: dict[str, Family] = {
     # opening `<|tool_response>`, which is where generation must stop (ml/configs/models.yaml).
     "gemma4": Family(
         "gemma4",
-        "<|channel>",
+        "<|channel>thought",
         "<channel|>",
         gemma4.tool_call_start,
         gemma4.tool_call_end,
@@ -141,8 +141,6 @@ class Splitter:
 
     def _emit(self, out: list[tuple[Phase, str]], text: str) -> None:
         if self._strip_next and text:
-            if self.phase == "reasoning" and self.family.name == "gemma4":
-                text = text.removeprefix("thought")
             text = text.lstrip()
             if text:
                 self._strip_next = False

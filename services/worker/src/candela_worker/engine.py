@@ -353,6 +353,7 @@ class Engine:
         future = loop.run_in_executor(self._executor, work)
         cancel_wait = asyncio.create_task(job.cancelled.wait())
         terminal = False
+        cancelled_at: float | None = None
         try:
             while True:
                 get = asyncio.create_task(queue.get())
@@ -360,6 +361,7 @@ class Engine:
                 if get not in done:
                     get.cancel()
                     stop.set()
+                    cancelled_at = time.perf_counter()
                     if not terminal:
                         terminal = True
                         await emit("done", {"finishReason": "cancelled"})
@@ -381,6 +383,12 @@ class Engine:
         finally:
             cancel_wait.cancel()
             await future
+            if cancelled_at is not None:
+                _log.info(
+                    "job cancelled",
+                    job=job.job_id,
+                    gpu_stopped_ms=round((time.perf_counter() - cancelled_at) * 1000),
+                )
 
     def _generate(
         self, job: Job, spec: ModelSpec, push: Callable[[str, dict[str, Any]], None], stop: threading.Event
@@ -458,7 +466,7 @@ class Engine:
 
         splitter = Splitter(lm.family)
         tail = prompt.rstrip()
-        if tail.endswith(lm.family.think_start) or tail.endswith(lm.family.think_start + "thought"):
+        if tail.endswith(lm.family.think_start):
             splitter.start_in_reasoning()
         detok = tok.detokenizer
         detok.reset()
