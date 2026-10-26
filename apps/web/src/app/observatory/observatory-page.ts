@@ -98,10 +98,11 @@ export class ObservatoryPage {
     });
   }
 
-  protected send(): void {
+  protected send(input: HTMLInputElement): void {
     const text = this.prompt().trim();
     if (!text || this.chat.busy()) return;
     this.prompt.set('');
+    input.value = '';
     if (!this.commands.execute(text)) void this.chat.send(text);
   }
 }

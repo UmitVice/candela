@@ -15,7 +15,7 @@ const queue = [...scripts];
 while (queue.length) {
   const file = queue.shift();
   const code = await readFile(join(dist, file), 'utf8');
-  for (const match of code.matchAll(/(?:from|import)\s*"\.\/(chunk-[A-Za-z0-9]+\.js)"/g)) {
+  for (const match of code.matchAll(/(?:from|import)\s*"\.\/(chunk-[A-Za-z0-9_-]+\.js)"/g)) {
     if (!scripts.has(match[1])) {
       scripts.add(match[1]);
       queue.push(match[1]);

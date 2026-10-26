@@ -35,6 +35,8 @@ export interface SceneModule {
   // Returns true while the scene still has motion to show; the stage stops its loop otherwise.
   update(dt: number, elapsed: number): boolean;
   configureControls?(controls: OrbitControls): void;
+  // Re-frames the camera for a new aspect ratio until the user moves it.
+  fit?(aspect: number, controls: OrbitControls): void;
   pick?(ctx: PickContext): unknown;
   dispose(): void;
 }
@@ -52,6 +54,20 @@ export interface StageOptions {
   onStats?: (stats: StageStats) => void;
   onHover?: (hit: unknown, clientX: number, clientY: number) => void;
   onClick?: (hit: unknown) => void;
+}
+
+export function fitSphere(
+  camera: PerspectiveCamera,
+  controls: OrbitControls,
+  radius: number,
+  aspect: number,
+): void {
+  const vHalf = (camera.fov * Math.PI) / 360;
+  const hHalf = Math.atan(Math.tan(vHalf) * aspect);
+  const distance = radius / Math.sin(Math.min(vHalf, hHalf));
+  const offset = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).addScaledVector(offset, distance);
+  controls.update();
 }
 
 export function supportsWebGL2(): boolean {
@@ -188,7 +204,10 @@ export class Stage {
   private readonly onControlStart = (): void => {
     this.controls.autoRotate = false;
     this.controlsActive = true;
+    this.interacted = true;
   };
+
+  private interacted = false;
 
   private readonly onControlEnd = (): void => {
     this.controlsActive = false;
@@ -268,6 +287,7 @@ export class Stage {
     const height = Math.max(1, this.host.clientHeight);
     this.module.camera.aspect = width / height;
     this.module.camera.updateProjectionMatrix();
+    if (!this.interacted && this.module.fit) this.module.fit(width / height, this.controls);
     this.renderer.setSize(width, height, false);
     this.composer.setSize(width, height, false);
     this.labels.setSize(width, height);

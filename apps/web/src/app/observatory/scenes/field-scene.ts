@@ -17,6 +17,7 @@ import type { LoraDeltas } from '../data/artifacts';
 import { label } from '../engine/labels';
 import { PALETTE, flameRamp } from '../engine/palette';
 import type { PickContext, SceneModule } from '../engine/stage';
+import { fitSphere } from '../engine/stage';
 
 export interface CellHit {
   kind: 'cell';
@@ -26,7 +27,7 @@ export interface CellHit {
 
 const DX = 1.25;
 const DZ = 0.42;
-const MAX_H = 6;
+const MAX_H = 4.5;
 
 export class FieldScene implements SceneModule {
   readonly scene = new Scene();
@@ -59,7 +60,7 @@ export class FieldScene implements SceneModule {
     this.scene.add(this.root);
 
     const depth = this.layers * DZ;
-    this.camera.position.set(depth * 0.45, depth * 0.62, depth * 1.2);
+    this.camera.position.set(depth * 0.55, depth * 0.62, depth * 0.95);
 
     const geometry = new BoxGeometry(DX * 0.72, 1, DZ * 0.72);
     geometry.translate(0, 0.5, 0);
@@ -76,12 +77,17 @@ export class FieldScene implements SceneModule {
   }
 
   configureControls(controls: OrbitControls): void {
-    controls.target.set(0, 1.2, 0);
+    controls.target.set(0, -0.6, 0);
     controls.minDistance = 6;
     controls.maxDistance = 80;
     controls.maxPolarAngle = Math.PI * 0.49;
     controls.autoRotate = false;
     controls.update();
+  }
+
+  fit(aspect: number, controls: OrbitControls): void {
+    const radius = (Math.hypot(this.modules * DX, this.layers * DZ, MAX_H) / 2) * 0.8;
+    fitSphere(this.camera, controls, radius, aspect);
   }
 
   private x(module: number): number {
@@ -177,9 +183,9 @@ export class FieldScene implements SceneModule {
     const title = label(
       `‖scale·B·A‖_F · log scale · max ${max.toFixed(2)}`,
       'obs-label obs-label-amber',
-      'right',
+      'left',
     );
-    title.position.set(-w / 2 - 0.35, MAX_H + 0.7, d / 2);
+    title.position.set(-w / 2, MAX_H + 0.7, d / 2);
     this.root.add(title);
   }
 

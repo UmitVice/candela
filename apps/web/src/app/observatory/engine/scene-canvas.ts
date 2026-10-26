@@ -76,6 +76,13 @@ export interface HoverEvent {
       border-left: 2px solid var(--info);
       border-radius: 0 3px 3px 0;
     }
+    @media (max-width: 767.98px) {
+      cd-scene-canvas .obs-label-lens {
+        max-width: 104px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
     cd-scene-canvas .obs-label-axis {
       background: transparent;
       color: var(--fg-1);

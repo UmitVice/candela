@@ -29,6 +29,7 @@ import type { TowerSpec } from '../data/observatory-data.service';
 import { label, setLabel } from '../engine/labels';
 import { PALETTE, flameRamp, kvGroupColor } from '../engine/palette';
 import type { PickContext, SceneModule } from '../engine/stage';
+import { fitSphere } from '../engine/stage';
 
 export interface TelemetrySource {
   readonly total: number;
@@ -169,6 +170,13 @@ export class TowerScene implements SceneModule {
     controls.maxPolarAngle = Math.PI * 0.92;
     controls.autoRotate = true;
     controls.update();
+  }
+
+  fit(aspect: number, controls: OrbitControls): void {
+    const top = this.height + 7.2;
+    const bottom = -1.5;
+    controls.target.y = (top + bottom) / 2;
+    fitSphere(this.camera, controls, ((top - bottom) / 2) * 1.04, aspect);
   }
 
   private layerY(index: number): number {
@@ -344,7 +352,8 @@ export class TowerScene implements SceneModule {
       this.root.add(bar);
       this.bars.push(bar);
     }
-    this.topLabel = label('', 'obs-label obs-label-token', 'left');
+    this.topLabel = label('', 'obs-label obs-label-token');
+    this.topLabel.center.set(0.5, 1);
     const title = document.createElement('div');
     title.className = 'obs-top-title';
     title.textContent = 'next token · top-5';
@@ -354,7 +363,7 @@ export class TowerScene implements SceneModule {
       this.topLabel.element.appendChild(row);
       this.topRows.push(row);
     }
-    this.topLabel.position.set(SLAB / 2 + 0.9, y + 1.6, -SLAB / 2 - 0.9);
+    this.topLabel.position.set(0, y + 2.9, 0);
     this.topLabel.visible = false;
     this.root.add(this.topLabel);
     const tied = this.spec.tiedEmbeddings ? ' · tied embeddings' : '';
@@ -430,11 +439,7 @@ export class TowerScene implements SceneModule {
     if (lora.length) {
       const lo = Math.min(...lora);
       const hi = Math.max(...lora);
-      const tag = label(
-        `LoRA · layers ${lo}–${hi} · ${this.spec.loraModules.length} projections`,
-        'obs-label obs-label-amber',
-        'right',
-      );
+      const tag = label(`LoRA L${lo}–${hi}`, 'obs-label obs-label-amber', 'right');
       const mid = Math.round((lo + hi) / 2) + 2;
       tag.position.set(-SLAB / 2 - 0.9, this.layerY(Math.min(hi, mid)), SLAB / 2 + 0.9);
       this.root.add(tag);
@@ -560,7 +565,7 @@ export class TowerScene implements SceneModule {
       this.barValue[i] =
         (this.barValue[i] ?? 0) + ((this.barTarget[i] ?? 0) - (this.barValue[i] ?? 0)) * k;
       const bar = this.bars[i];
-      if (bar) bar.scale.y = Math.max(0.001, (this.barValue[i] ?? 0) * 3.2);
+      if (bar) bar.scale.y = Math.max(0.001, (this.barValue[i] ?? 0) * 2.4);
     }
     this.entropy += (this.entropyTarget - this.entropy) * k;
     this.flameMaterial.uniforms['uTime']!.value = this.reducedMotion ? 0 : elapsed;

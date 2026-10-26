@@ -20,6 +20,7 @@ import type { SparkAttention } from '../data/artifacts';
 import { label } from '../engine/labels';
 import { PALETTE } from '../engine/palette';
 import type { PickContext, SceneModule } from '../engine/stage';
+import { fitSphere } from '../engine/stage';
 
 export interface HeadHit {
   kind: 'head';
@@ -36,6 +37,7 @@ export class AttentionScene implements SceneModule {
   readonly camera = new PerspectiveCamera(42, 1, 0.1, 300);
 
   private readonly root = new Group();
+  private radius = 1;
   private readonly tiles: Mesh[] = [];
   private readonly outline: LineSegments[] = [];
   private selected: Mesh | null = null;
@@ -115,7 +117,8 @@ export class AttentionScene implements SceneModule {
     }
     this.scene.add(this.root);
     const height = attention.layers * LAYER_GAP;
-    this.camera.position.set(width * 0.85, height * 1.25, width * 1.55);
+    this.radius = (Math.hypot(width, height, TILE) / 2) * 0.78;
+    this.camera.position.set(width * 0.3, height * 0.9, width * 1.3);
   }
 
   configureControls(controls: OrbitControls): void {
@@ -124,6 +127,10 @@ export class AttentionScene implements SceneModule {
     controls.maxDistance = 60;
     controls.autoRotate = false;
     controls.update();
+  }
+
+  fit(aspect: number, controls: OrbitControls): void {
+    fitSphere(this.camera, controls, this.radius, aspect);
   }
 
   select(layer: number, head: number): void {

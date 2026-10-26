@@ -15,6 +15,7 @@ import {
 import type { EmbeddingGalaxy, GalaxyPoint } from '../data/artifacts';
 import { label, setLabel } from '../engine/labels';
 import type { PickContext, SceneModule } from '../engine/stage';
+import { fitSphere } from '../engine/stage';
 
 export interface PointHit {
   kind: 'point';
@@ -150,6 +151,10 @@ export class GalaxyScene implements SceneModule {
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.25;
     controls.update();
+  }
+
+  fit(aspect: number, controls: OrbitControls): void {
+    fitSphere(this.camera, controls, RADIUS * 0.9, aspect);
   }
 
   setHidden(sectors: Set<string>): void {

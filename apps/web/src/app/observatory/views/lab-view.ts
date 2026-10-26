@@ -183,6 +183,7 @@ export class LabView {
             silent: true,
             lineStyle: { color: t.down, type: 'dotted' },
             label: {
+              position: 'insideEndTop',
               color: t.down,
               fontFamily: t.mono,
               fontSize: 10,
@@ -230,6 +231,7 @@ export class LabView {
         {
           name: 'tuned',
           type: 'bar',
+          itemStyle: { color: t.accent },
           data: suites.map((s) => ({
             value: s.tuned,
             itemStyle: { color: better(s) ? t.accent : t.down },

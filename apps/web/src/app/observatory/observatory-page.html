@@ -22,8 +22,7 @@
       </nav>
       <div class="spacer"></div>
       @if (proChoices().length || sparkChoices().length) {
-        <label class="model-select">
-          <span class="sr-only">Model version</span>
+        <span class="model-select">
           <select
             class="mono"
             [ngModel]="selectedModel()"
@@ -45,7 +44,7 @@
               </optgroup>
             }
           </select>
-        </label>
+        </span>
       }
       <button
         type="button"
@@ -78,13 +77,14 @@
     </div>
 
     @if (!split()) {
-      <form class="prompt-bar" (submit)="$event.preventDefault(); send()">
+      <form class="prompt-bar" (submit)="$event.preventDefault(); send(promptEl)">
         @if (liveLine()) {
           <p class="live-line mono" aria-live="off">{{ liveLine() }}</p>
         }
         <div class="prompt-row">
           <span class="caret mono" aria-hidden="true">›</span>
           <input
+            #promptEl
             class="mono"
             type="text"
             name="prompt"
@@ -93,8 +93,9 @@
             placeholder="Ask Candela and watch the tower think…"
             aria-label="Prompt"
             maxlength="8000"
-            [ngModel]="prompt()"
-            (ngModelChange)="prompt.set($event)"
+            [value]="prompt()"
+            (input)="prompt.set($any($event.target).value)"
+            (keydown.enter)="$event.preventDefault(); send(promptEl)"
           />
           @if (chat.busy()) {
             <button type="button" class="send" (click)="chat.stop()">Stop</button>

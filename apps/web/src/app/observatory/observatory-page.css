@@ -32,6 +32,7 @@
 }
 
 .obs-bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -190,11 +191,25 @@
   opacity: 0.45;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+@media (max-width: 767.98px) {
+  .obs-bar {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 6px 10px;
+  }
+
+  .scenes {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .model-select select {
+    max-width: 190px;
+  }
+
+  .stats {
+    display: none;
+  }
 }
