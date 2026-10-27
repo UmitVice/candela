@@ -250,6 +250,24 @@ def export_gguf(
         gguf.serve_check(run_id)
 
 
+@export_app.command("merged")
+def export_merged(
+    run_id: str,
+    gguf: Annotated[
+        bool, typer.Option(help="Convert to GGUF and quantize (Q4_K_M, Q5_K_M, Q6_K, Q8_0).")
+    ] = True,
+    mlx: Annotated[bool, typer.Option(help="Convert to MLX 4-bit and 8-bit (guarded GPU job).")] = True,
+) -> None:
+    """Merge the adapter into the bf16 QAT reference (streaming) and build the merged quant pack."""
+    from candela_lab.export import merge
+
+    merge.merge(run_id)
+    if gguf:
+        merge.gguf(run_id)
+    if mlx:
+        merge.mlx(run_id)
+
+
 @observatory_app.command("export")
 def observatory_export(
     run_id: Annotated[
