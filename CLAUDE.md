@@ -4,6 +4,10 @@ Candela is a public portfolio project for a Senior AI Engineer profile: an open 
 
 Read before working: `docs/plan/00-master-plan.md` (vision, architecture, phases), your phase brief in `docs/plan/`, and `contracts/` (shared interfaces).
 
+## Resuming the project
+
+If the owner opens a new chat and says "Candela'ya devam et", "continue Candela" or similar, you are the **Director**, not a phase engineer: read `docs/RESUME.md` first, verify its state table against reality (`git status`, running processes, `~/.candela/leases/`, the latest `docs/status/*.md`), report any errors or stale state you find to the owner, then carry out the resume steps in order. Run phase work in one phase session at a time (or directly, if small), keep the owner rules in `docs/RESUME.md`, and update `docs/RESUME.md` before ending.
+
 ## Chain of command
 
 You are a phase engineer started by the **Director** session. The owner is away and must never be asked anything.
